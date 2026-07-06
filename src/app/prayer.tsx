@@ -19,36 +19,42 @@ export default function PrayerExpanded() {
 
   return (
     <Screen scroll={false}>
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: colors.cardDark,
-          borderRadius: radii.cardLg,
-          marginTop: 12,
-          marginBottom: 24,
-          padding: 26,
-        }}
-      >
-        <Txt variant="body" center size={13} color={colors.yellow}>
-          {t('home.prayerLabel')}
-        </Txt>
-        <View style={{ height: 20 }} />
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <Txt variant="quote" color={colors.onDark} size={16} style={{ lineHeight: 27 }}>
-            {prayer}
+      {/* Card hugs its content: small notes make a small card, long notes
+          grow to a max height and scroll inside. */}
+      <View style={{ flex: 1, justifyContent: 'center', paddingVertical: 24 }}>
+        <View
+          style={{
+            backgroundColor: colors.cardDark,
+            borderRadius: radii.cardLg,
+            padding: 26,
+            minHeight: 260,
+            maxHeight: '88%',
+          }}
+        >
+          <Txt variant="body" center size={13} color={colors.yellow}>
+            {t('home.prayerLabel')}
           </Txt>
-          <View style={{ height: 24 }} />
-          <Txt variant="caption" color={colors.mutedOnDark}>
-            {t('prayer.from')} · {sundayLabel}
-          </Txt>
-        </ScrollView>
-        <View style={{ height: 16 }} />
-        <Pill
-          small
-          label={t('prayer.close')}
-          onPress={() => router.back()}
-          style={{ alignSelf: 'center' }}
-        />
+          <View style={{ height: 18 }} />
+          <ScrollView
+            style={{ flexGrow: 0, flexShrink: 1 }}
+            showsVerticalScrollIndicator={false}
+          >
+            <Txt variant="quote" color={colors.onDark} size={16} style={{ lineHeight: 27 }}>
+              {prayer}
+            </Txt>
+            <View style={{ height: 20 }} />
+            <Txt variant="caption" color={colors.mutedOnDark}>
+              {t('prayer.from')} · {sundayLabel}
+            </Txt>
+          </ScrollView>
+          <View style={{ height: 18 }} />
+          <Pill
+            small
+            label={t('prayer.close')}
+            onPress={() => router.back()}
+            style={{ alignSelf: 'center' }}
+          />
+        </View>
       </View>
     </Screen>
   );

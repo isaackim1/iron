@@ -132,6 +132,12 @@ export default function Manage() {
           {t('manage.membersInvite')}
         </Txt>
       </TouchableOpacity>
+      <View style={{ height: 16 }} />
+      <TouchableOpacity onPress={() => router.push('/groups')}>
+        <Txt variant="button" center size={14} color={colors.ink}>
+          {t('manage.myGroups')}
+        </Txt>
+      </TouchableOpacity>
       <View style={{ height: 20 }} />
     </Screen>
   );

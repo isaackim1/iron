@@ -130,6 +130,18 @@ function reducer(state: AppState, action: Action): AppState {
             role: 'leader',
             joinedAt: isoDate(today()),
           },
+          // Demo seed: new leaders also belong to the seeded group as a
+          // regular member, so the leader ↔ member switching is testable.
+          ...(state.groups.some((g) => g.id === 'g-honest')
+            ? [
+                {
+                  userId: action.user.id,
+                  groupId: 'g-honest',
+                  role: 'member' as const,
+                  joinedAt: isoDate(today()),
+                },
+              ]
+            : []),
         ],
         schedules: [...state.schedules, action.schedule],
         currentUserId: action.user.id,

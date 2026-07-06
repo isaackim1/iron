@@ -128,6 +128,7 @@ const en: Dict = {
   'detail.highlighted': 'highlighted verse(s)',
 
   'groups.add': 'Add',
+  'groups.title': 'my groups',
   'groups.leaderMeta': 'leader · {n} members',
   'groups.memberMeta': 'member · {n}',
 
@@ -156,6 +157,7 @@ const en: Dict = {
   'manage.publishHint': 'members receive each chapter at their own reminder time',
   'manage.needPrayer': 'add chapters and a prayer point to publish',
   'manage.membersInvite': 'Members & Invite ›',
+  'manage.myGroups': 'My groups ›',
 
   'members.title': 'members',
   'members.meta': '{group} · {n} people',
@@ -315,6 +317,7 @@ const ko: Dict = {
   'detail.highlighted': '하이라이트한 구절',
 
   'groups.add': '추가',
+  'groups.title': '나의 그룹',
   'groups.leaderMeta': '리더 · 멤버 {n}명',
   'groups.memberMeta': '멤버 · {n}명',
 
@@ -343,6 +346,7 @@ const ko: Dict = {
   'manage.publishHint': '멤버들은 각자 정한 알림 시간에 그날의 말씀을 받아요',
   'manage.needPrayer': '말씀과 기도제목을 추가하면 발행할 수 있어요',
   'manage.membersInvite': '멤버 · 초대 ›',
+  'manage.myGroups': '내 그룹 ›',
 
   'members.title': '멤버',
   'members.meta': '{group} · {n}명',
