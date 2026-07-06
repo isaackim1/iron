@@ -1,0 +1,94 @@
+import Feather from '@expo/vector-icons/Feather';
+import { router } from 'expo-router';
+import { View } from 'react-native';
+import { Card, Pill, Screen, Txt } from '@/components/ui';
+import { sel, useApp } from '@/lib/store';
+import { colors, radii } from '@/lib/theme';
+
+export default function GroupTab() {
+  const { state, actions, t } = useApp();
+  const mine = sel.myGroups(state);
+
+  return (
+    <Screen>
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingVertical: 8 }}>
+        <Pill small label={t('groups.add')} onPress={() => router.push('/join')} />
+      </View>
+
+      {/* decorative search */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: colors.card,
+          borderRadius: radii.pill,
+          paddingVertical: 13,
+          paddingHorizontal: 18,
+          marginBottom: 18,
+        }}
+      >
+        <Feather name="search" size={15} color={colors.muted} />
+        <Txt variant="caption" style={{ marginLeft: 10 }}>
+          {t('join.codePlaceholder')}
+        </Txt>
+      </View>
+
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14 }}>
+        {mine.map(({ group, membership, memberCount }, i) => {
+          const yellow = i % 2 === 0;
+          const active = group.id === state.activeGroupId;
+          return (
+            <Card
+              key={group.id}
+              onPress={() => {
+                actions.switchGroup(group.id);
+                router.navigate('/(tabs)/home');
+              }}
+              style={{
+                width: '47%',
+                minHeight: 220,
+                backgroundColor: yellow ? colors.yellow : colors.cardDark,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: active ? 2 : 0,
+                borderColor: colors.charcoal,
+              }}
+            >
+              <Txt
+                variant="quoteBold"
+                center
+                size={20}
+                color={yellow ? colors.ink : colors.yellow}
+                style={{ lineHeight: 28 }}
+              >
+                {sel.groupName(state, group)}
+              </Txt>
+              <View style={{ height: 10 }} />
+              <Txt
+                variant="quote"
+                center
+                size={13}
+                color={yellow ? colors.charcoal : colors.onDark}
+              >
+                {state.language === 'ko' && group.descriptionKo
+                  ? group.descriptionKo
+                  : group.description}
+              </Txt>
+              <View style={{ height: 14 }} />
+              <Txt
+                variant="caption"
+                center
+                size={10}
+                color={yellow ? colors.charcoal : colors.mutedOnDark}
+              >
+                {membership.role === 'leader'
+                  ? t('groups.leaderMeta', { n: memberCount })
+                  : t('groups.memberMeta', { n: memberCount })}
+              </Txt>
+            </Card>
+          );
+        })}
+      </View>
+    </Screen>
+  );
+}
