@@ -210,6 +210,22 @@ export function buildSeedActivity(): {
   return { responses, reflections };
 }
 
+export interface DemoOnboardingContext {
+  memberships: Membership[];
+  responses: ResponseEntry[];
+  reflections: Reflection[];
+}
+
+function uniqueMemberships(memberships: Membership[]): Membership[] {
+  const seen = new Set<string>();
+  return memberships.filter((membership) => {
+    const key = `${membership.userId}:${membership.groupId}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 /**
  * Demo history attached to a newly-joined member so My Reflections and the
  * feed feel lived-in from the first minute. Removed once real data exists.
@@ -274,6 +290,82 @@ export function buildJoinerHistory(
   ];
 
   return { responses, reflections };
+}
+
+/**
+ * Demo-only onboarding context for the local MVP. It keeps the group switcher
+ * and My Reflections populated without leaking demo seeding into reducer logic.
+ */
+export function buildDemoJoinGroupContext(
+  userId: string,
+  joinedGroupId: string,
+  existingGroupIds: string[],
+): DemoOnboardingContext {
+  const joinedAt = isoDate(today());
+  const memberships = uniqueMemberships(
+    [
+      {
+        userId,
+        groupId: joinedGroupId,
+        role: 'member' as const,
+        joinedAt,
+      },
+      // Demo-only: joining Honest People also gives a second member-only group
+      // so the switcher is useful immediately in the local mock app.
+      ...(joinedGroupId === 'g-honest' && existingGroupIds.includes('g-word')
+        ? [
+            {
+              userId,
+              groupId: 'g-word',
+              role: 'member' as const,
+              joinedAt,
+            },
+          ]
+        : []),
+    ].filter((m) => existingGroupIds.includes(m.groupId)),
+  );
+  const history = joinedGroupId === 'g-honest'
+    ? buildJoinerHistory(userId)
+    : { responses: [], reflections: [] };
+
+  return {
+    memberships,
+    responses: history.responses,
+    reflections: history.reflections,
+  };
+}
+
+/**
+ * Demo-only context for newly-created leaders. The real create-group path is
+ * just the leader membership for the new group; the Honest People membership
+ * keeps leader-as-member switching testable until real accounts exist.
+ */
+export function buildDemoCreateGroupContext(
+  userId: string,
+  createdGroupId: string,
+  existingGroupIds: string[],
+): Pick<DemoOnboardingContext, 'memberships'> {
+  const joinedAt = isoDate(today());
+  return {
+    memberships: uniqueMemberships([
+      {
+        userId,
+        groupId: createdGroupId,
+        role: 'leader' as const,
+        joinedAt,
+      },
+      ...(existingGroupIds.includes('g-honest')
+        ? [
+            {
+              userId,
+              groupId: 'g-honest',
+              role: 'member' as const,
+              joinedAt,
+            },
+          ]
+        : []),
+    ]),
+  };
 }
 
 export const seedNotificationPrefs: NotificationPreference[] = [

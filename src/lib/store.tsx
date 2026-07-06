@@ -8,7 +8,8 @@ import React, {
 import { addDays, isoDate, mondayOf, today, todayReadingIndex } from './dates';
 import { translate } from './i18n';
 import {
-  buildJoinerHistory,
+  buildDemoCreateGroupContext,
+  buildDemoJoinGroupContext,
   buildSeedActivity,
   buildSeedSchedules,
   seedGroups,
@@ -30,7 +31,10 @@ import type {
   WeeklySchedule,
 } from './types';
 
-export interface AppState {
+export const APP_STATE_VERSION = 1;
+
+export interface PersistedAppState {
+  version: number;
   language: Language;
   currentUserId: string | null;
   activeGroupId: string | null;
@@ -41,13 +45,48 @@ export interface AppState {
   responses: ResponseEntry[];
   reflections: Reflection[];
   notificationPrefs: NotificationPreference[];
+}
+
+export interface TransientAppState {
   /** Verses highlighted in the current reading session (carried into Reflection). */
   draftVerses: number[];
 }
 
-function initialState(): AppState {
+export interface AppState extends PersistedAppState, TransientAppState {}
+
+export const PERSISTED_STATE_KEYS = [
+  'version',
+  'language',
+  'currentUserId',
+  'activeGroupId',
+  'users',
+  'groups',
+  'memberships',
+  'schedules',
+  'responses',
+  'reflections',
+  'notificationPrefs',
+] as const satisfies readonly (keyof PersistedAppState)[];
+
+export const TRANSIENT_STATE_KEYS = [
+  'draftVerses',
+] as const satisfies readonly (keyof TransientAppState)[];
+
+function transientInitialState(): TransientAppState {
+  return { draftVerses: [] };
+}
+
+export function createHydratedAppState(persisted: PersistedAppState): AppState {
+  return {
+    ...persisted,
+    ...transientInitialState(),
+  };
+}
+
+export function createDemoAppState(): AppState {
   const { responses, reflections } = buildSeedActivity();
   return {
+    version: APP_STATE_VERSION,
     language: 'en',
     currentUserId: null,
     activeGroupId: null,
@@ -58,14 +97,28 @@ function initialState(): AppState {
     responses,
     reflections,
     notificationPrefs: seedNotificationPrefs,
-    draftVerses: [],
+    ...transientInitialState(),
   };
 }
 
 type Action =
   | { type: 'setLanguage'; language: Language }
-  | { type: 'joinGroup'; user: UserProfile; groupId: string }
-  | { type: 'createGroup'; user: UserProfile; group: Group; schedule: WeeklySchedule }
+  | {
+      type: 'joinGroup';
+      user: UserProfile;
+      activeGroupId: string;
+      memberships: Membership[];
+      responses: ResponseEntry[];
+      reflections: Reflection[];
+    }
+  | {
+      type: 'createGroup';
+      user: UserProfile;
+      group: Group;
+      schedule: WeeklySchedule;
+      activeGroupId: string;
+      memberships: Membership[];
+    }
   | { type: 'setNotificationTime'; time: string }
   | { type: 'toggleDraftVerse'; n: number }
   | { type: 'clearDraftVerses' }
@@ -82,7 +135,8 @@ type Action =
   | { type: 'setAnnouncement'; text: string }
   | { type: 'setDayPassage'; weekday: Weekday; passage: BiblePassage }
   | { type: 'publishWeek' }
-  | { type: 'switchGroup'; groupId: string };
+  | { type: 'switchGroup'; groupId: string }
+  | { type: 'resetDemoData' };
 
 function getActiveMembership(s: AppState): Membership | undefined {
   return s.memberships.find(
@@ -115,63 +169,26 @@ function reducer(state: AppState, action: Action): AppState {
     case 'setLanguage':
       return { ...state, language: action.language };
 
-    case 'joinGroup': {
-      const history = buildJoinerHistory(action.user.id);
-      const extraMemberships: Membership[] = [
-        {
-          userId: action.user.id,
-          groupId: action.groupId,
-          role: 'member' as const,
-          joinedAt: isoDate(today()),
-        },
-        // Demo seed: second membership so the group switcher is meaningful.
-        {
-          userId: action.user.id,
-          groupId: 'g-word',
-          role: 'member' as const,
-          joinedAt: isoDate(today()),
-        },
-      ].filter((m) => state.groups.some((g) => g.id === m.groupId));
+    case 'joinGroup':
       return {
         ...state,
         users: [...state.users, action.user],
-        memberships: [...state.memberships, ...extraMemberships],
-        responses: [...state.responses, ...history.responses],
-        reflections: [...state.reflections, ...history.reflections],
+        memberships: [...state.memberships, ...action.memberships],
+        responses: [...state.responses, ...action.responses],
+        reflections: [...state.reflections, ...action.reflections],
         currentUserId: action.user.id,
-        activeGroupId: action.groupId,
+        activeGroupId: action.activeGroupId,
       };
-    }
 
     case 'createGroup':
       return {
         ...state,
         users: [...state.users, action.user],
         groups: [...state.groups, action.group],
-        memberships: [
-          ...state.memberships,
-          {
-            userId: action.user.id,
-            groupId: action.group.id,
-            role: 'leader',
-            joinedAt: isoDate(today()),
-          },
-          // Demo seed: new leaders also belong to the seeded group as a
-          // regular member, so the leader ↔ member switching is testable.
-          ...(state.groups.some((g) => g.id === 'g-honest')
-            ? [
-                {
-                  userId: action.user.id,
-                  groupId: 'g-honest',
-                  role: 'member' as const,
-                  joinedAt: isoDate(today()),
-                },
-              ]
-            : []),
-        ],
+        memberships: [...state.memberships, ...action.memberships],
         schedules: [...state.schedules, action.schedule],
         currentUserId: action.user.id,
-        activeGroupId: action.group.id,
+        activeGroupId: action.activeGroupId,
       };
 
     case 'setNotificationTime': {
@@ -313,6 +330,9 @@ function reducer(state: AppState, action: Action): AppState {
       if (!hasGroupMembership(state, action.groupId)) return state;
       return { ...state, activeGroupId: action.groupId };
 
+    case 'resetDemoData':
+      return createDemoAppState();
+
     default:
       return state;
   }
@@ -338,6 +358,7 @@ export interface AppActions {
   setDayPassage: (weekday: Weekday, passage: BiblePassage) => void;
   publishWeek: () => void;
   switchGroup: (groupId: string) => void;
+  resetDemoData: () => void;
 }
 
 interface AppContextValue {
@@ -349,7 +370,7 @@ interface AppContextValue {
 const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, undefined, initialState);
+  const [state, dispatch] = useReducer(reducer, undefined, createDemoAppState);
   const stateRef = React.useRef(state);
   React.useEffect(() => {
     stateRef.current = state;
@@ -369,7 +390,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
           id: `u-${Date.now()}`,
           name: name.trim(),
         };
-        dispatch({ type: 'joinGroup', user, groupId: group.id });
+        const demoContext = buildDemoJoinGroupContext(
+          user.id,
+          group.id,
+          s.groups.map((g) => g.id),
+        );
+        dispatch({
+          type: 'joinGroup',
+          user,
+          activeGroupId: group.id,
+          memberships: demoContext.memberships,
+          responses: demoContext.responses,
+          reflections: demoContext.reflections,
+        });
         return true;
       },
 
@@ -398,7 +431,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
           prayerPoint: '',
           published: false,
         };
-        dispatch({ type: 'createGroup', user, group, schedule });
+        const demoContext = buildDemoCreateGroupContext(
+          user.id,
+          group.id,
+          stateRef.current.groups.map((g) => g.id),
+        );
+        dispatch({
+          type: 'createGroup',
+          user,
+          group,
+          schedule,
+          activeGroupId: group.id,
+          memberships: demoContext.memberships,
+        });
         return group.id;
       },
 
@@ -430,6 +475,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'setDayPassage', weekday, passage }),
       publishWeek: () => dispatch({ type: 'publishWeek' }),
       switchGroup: (groupId) => dispatch({ type: 'switchGroup', groupId }),
+      resetDemoData: () => dispatch({ type: 'resetDemoData' }),
     }),
     [],
   );
