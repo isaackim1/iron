@@ -10,7 +10,7 @@ Design source of truth: the Figma prototype
 
 ## Stack
 
-- Expo (SDK 57) + React Native + TypeScript
+- Expo (SDK 54) + React Native + TypeScript
 - expo-router (file-based navigation, role-aware tabs)
 - Local mock state (React context + reducer) — no backend yet
 - English / Korean (한국어) language mode

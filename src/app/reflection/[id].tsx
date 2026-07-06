@@ -10,7 +10,9 @@ export default function ReflectionDetail() {
   const { state, t } = useApp();
   const { id } = useLocalSearchParams<{ id: string }>();
   const reflection = id ? sel.reflectionById(state, id) : undefined;
-  const group = sel.activeGroup(state);
+  const group = reflection
+    ? state.groups.find((g) => g.id === reflection.groupId)
+    : undefined;
 
   if (!reflection) {
     router.back();
@@ -18,6 +20,7 @@ export default function ReflectionDetail() {
   }
 
   const mine = reflection.userId === state.currentUserId;
+  const canEdit = sel.canEditReflection(state, reflection);
   const verses = versesFor(reflection.passage).filter((v) =>
     reflection.highlightedVerses.includes(v.n),
   );
@@ -76,7 +79,7 @@ export default function ReflectionDetail() {
       </Txt>
 
       <View style={{ height: 36 }} />
-      {mine && (
+      {mine && canEdit && (
         <Pill
           small
           kind="dark"

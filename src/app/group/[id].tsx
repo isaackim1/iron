@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { TouchableOpacity, View } from 'react-native';
 import { Avatar, BackChevron, Card, Pill, Screen, Txt } from '@/components/ui';
 import { fmtTime } from '@/lib/dates';
@@ -13,6 +13,7 @@ export default function GroupDetail() {
     router.back();
     return null;
   }
+  if (!sel.isMemberOfGroup(state, group.id)) return <Redirect href="/(tabs)/home" />;
 
   const members = sel.groupMembers(state, group.id);
   const shown = members.slice(0, 4);
@@ -163,11 +164,7 @@ export default function GroupDetail() {
           </Txt>
         </TouchableOpacity>
       </Card>
-
-      <View style={{ height: 26 }} />
-      <Txt variant="caption" center color={colors.danger} style={{ opacity: 0.7, marginBottom: 20 }}>
-        {t('gdetail.leave')}
-      </Txt>
+      <View style={{ height: 20 }} />
     </Screen>
   );
 }

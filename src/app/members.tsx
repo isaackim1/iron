@@ -1,4 +1,5 @@
 import * as Clipboard from 'expo-clipboard';
+import { Redirect } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 import { Avatar, BackChevron, Card, Pill, Screen, Txt } from '@/components/ui';
@@ -10,6 +11,9 @@ export default function Members() {
   const [copied, setCopied] = useState(false);
   const [reminderSent, setReminderSent] = useState(false);
   const group = sel.activeGroup(state);
+  const canManage = sel.canManageActiveGroup(state);
+
+  if (!canManage) return <Redirect href="/(tabs)/home" />;
   if (!group) return null;
 
   const members = sel.groupMembers(state, group.id);
@@ -84,11 +88,7 @@ export default function Members() {
                   {t('gdetail.leader')}
                 </Txt>
               </View>
-            ) : (
-              <Txt variant="caption" size={11} style={{ opacity: 0.7 }}>
-                {t('members.remove')}
-              </Txt>
-            )}
+            ) : null}
           </View>
         ))}
       </Card>

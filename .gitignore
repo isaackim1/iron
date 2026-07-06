@@ -5,6 +5,7 @@ node_modules/
 
 # Expo
 .expo/
+assets/expo.icon/
 dist/
 web-build/
 expo-env.d.ts
@@ -29,6 +30,11 @@ yarn-error.*
 # macOS
 .DS_Store
 *.pem
+
+# Design source / Illustrator temp files
+300ppi/
+*.ai
+~ai-*.tmp
 
 # local env files
 .env*.local

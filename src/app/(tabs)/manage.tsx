@@ -10,7 +10,7 @@ export default function Manage() {
   const { state, actions, t } = useApp();
   const group = sel.activeGroup(state);
   const schedule = sel.activeSchedule(state);
-  const isLeader = sel.myRole(state) === 'leader';
+  const isLeader = sel.canManageActiveGroup(state);
 
   if (!isLeader) return <Redirect href="/(tabs)/home" />;
   if (!group || !schedule) return null;

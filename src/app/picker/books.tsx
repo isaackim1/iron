@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { TouchableOpacity, View } from 'react-native';
 import { BackChevron, Card, Screen, Txt } from '@/components/ui';
 import { BIBLE_BOOKS } from '@/lib/bible';
@@ -10,11 +10,14 @@ export default function PickerBooks() {
   const { state, t } = useApp();
   const { day } = useLocalSearchParams<{ day: string }>();
   const schedule = sel.activeSchedule(state);
+  const canManage = sel.canManageActiveGroup(state);
   const dayEntry = schedule?.days.find((d) => String(d.weekday) === day);
   const dayLabel = dayEntry
     ? fmtDayShort(fromIso(dayEntry.date), state.language)
     : '';
   const currentBook = dayEntry?.passage.book;
+
+  if (!canManage) return <Redirect href="/(tabs)/home" />;
 
   return (
     <Screen>

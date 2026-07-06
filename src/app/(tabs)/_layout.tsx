@@ -10,7 +10,7 @@ export default function TabsLayout() {
     return <Redirect href="/welcome" />;
   }
 
-  const isLeader = sel.myRole(state) === 'leader';
+  const isLeader = sel.canManageActiveGroup(state);
   const labelFamily =
     state.language === 'ko' ? 'NotoSansKR_400Regular' : 'IstokWeb_400Regular';
 

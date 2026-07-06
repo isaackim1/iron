@@ -11,11 +11,12 @@ export default function ReflectionNew() {
   const { state, actions, t } = useApp();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const editing = edit ? sel.reflectionById(state, edit) : undefined;
+  const blockedEdit = !!edit && (!editing || !sel.canEditReflection(state, editing));
 
   const todayDay = sel.todayDay(state);
-  const passage = editing?.passage ?? todayDay?.passage;
-  const date = editing?.date ?? todayDay?.date;
-  const highlightNs = editing?.highlightedVerses ?? state.draftVerses;
+  const passage = blockedEdit ? undefined : (editing?.passage ?? todayDay?.passage);
+  const date = blockedEdit ? undefined : (editing?.date ?? todayDay?.date);
+  const highlightNs = blockedEdit ? [] : (editing?.highlightedVerses ?? state.draftVerses);
 
   const [body, setBody] = useState(editing ? sel.reflectionBody(state, editing) : '');
   const [visibility, setVisibility] = useState<'shared' | 'private'>(
@@ -30,6 +31,7 @@ export default function ReflectionNew() {
   const verses = versesFor(passage).filter((v) => highlightNs.includes(v.n));
 
   const post = () => {
+    if (blockedEdit) return;
     actions.postReflection({ body: body.trim(), visibility, editId: editing?.id });
     if (editing) {
       router.back();

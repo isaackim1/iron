@@ -1,14 +1,17 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { TouchableOpacity, View } from 'react-native';
 import { BackChevron, Card, Screen, Txt } from '@/components/ui';
 import { bookByName } from '@/lib/bible';
-import { useApp } from '@/lib/store';
+import { sel, useApp } from '@/lib/store';
 import { colors } from '@/lib/theme';
 
 export default function PickerChapters() {
   const { state, t } = useApp();
   const { day, book } = useLocalSearchParams<{ day: string; book: string }>();
   const bookEntry = book ? bookByName(book) : undefined;
+  const canManage = sel.canManageActiveGroup(state);
+
+  if (!canManage) return <Redirect href="/(tabs)/home" />;
 
   if (!bookEntry) {
     router.back();

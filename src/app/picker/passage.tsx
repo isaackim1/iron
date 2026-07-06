@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { TextInput, TouchableOpacity, View } from 'react-native';
 import { BackChevron, Pill, Screen, Txt } from '@/components/ui';
@@ -23,7 +23,10 @@ export default function PickerPassage() {
   const ch = Number(chapter);
   const weekday = Number(day) as Weekday;
   const schedule = sel.activeSchedule(state);
+  const canManage = sel.canManageActiveGroup(state);
   const dayEntry = schedule?.days.find((d) => d.weekday === weekday);
+
+  if (!canManage) return <Redirect href="/(tabs)/home" />;
 
   if (!bookEntry || !ch || !dayEntry) {
     router.back();

@@ -84,6 +84,32 @@ type Action =
   | { type: 'publishWeek' }
   | { type: 'switchGroup'; groupId: string };
 
+function getActiveMembership(s: AppState): Membership | undefined {
+  return s.memberships.find(
+    (m) => m.userId === s.currentUserId && m.groupId === s.activeGroupId,
+  );
+}
+
+function hasGroupMembership(s: AppState, groupId: string): boolean {
+  return s.memberships.some(
+    (m) => m.userId === s.currentUserId && m.groupId === groupId,
+  );
+}
+
+function hasActiveGroupLeaderRole(s: AppState): boolean {
+  return getActiveMembership(s)?.role === 'leader';
+}
+
+function userCanViewReflection(s: AppState, r: Reflection): boolean {
+  if (!s.currentUserId) return false;
+  if (r.userId === s.currentUserId) return true;
+  return r.visibility === 'shared' && hasGroupMembership(s, r.groupId);
+}
+
+function userCanEditReflection(s: AppState, r: Reflection): boolean {
+  return !!s.currentUserId && r.userId === s.currentUserId;
+}
+
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'setLanguage':
@@ -181,6 +207,7 @@ function reducer(state: AppState, action: Action): AppState {
 
     case 'amenToday': {
       if (!state.currentUserId || !state.activeGroupId) return state;
+      if (!hasGroupMembership(state, state.activeGroupId)) return state;
       const exists = state.responses.some(
         (r) =>
           r.userId === state.currentUserId &&
@@ -207,7 +234,10 @@ function reducer(state: AppState, action: Action): AppState {
 
     case 'postReflection': {
       if (!state.currentUserId || !state.activeGroupId) return state;
+      if (!hasGroupMembership(state, state.activeGroupId)) return state;
       if (action.editId) {
+        const existing = state.reflections.find((r) => r.id === action.editId);
+        if (!existing || !userCanEditReflection(state, existing)) return state;
         return {
           ...state,
           reflections: state.reflections.map((r) =>
@@ -254,6 +284,7 @@ function reducer(state: AppState, action: Action): AppState {
     case 'publishWeek':
     case 'setDayPassage': {
       if (!state.activeGroupId) return state;
+      if (!hasActiveGroupLeaderRole(state)) return state;
       const weekStart = isoDate(mondayOf(today()));
       return {
         ...state,
@@ -279,6 +310,7 @@ function reducer(state: AppState, action: Action): AppState {
     }
 
     case 'switchGroup':
+      if (!hasGroupMembership(state, action.groupId)) return state;
       return { ...state, activeGroupId: action.groupId };
 
     default:
@@ -433,10 +465,24 @@ export const sel = {
     return s.groups.find((g) => g.id === s.activeGroupId);
   },
 
+  activeMembership(s: AppState): Membership | undefined {
+    return getActiveMembership(s);
+  },
+
   myRole(s: AppState): 'leader' | 'member' | undefined {
-    return s.memberships.find(
-      (m) => m.userId === s.currentUserId && m.groupId === s.activeGroupId,
-    )?.role;
+    return getActiveMembership(s)?.role;
+  },
+
+  isActiveGroupLeader(s: AppState): boolean {
+    return hasActiveGroupLeaderRole(s);
+  },
+
+  canManageActiveGroup(s: AppState): boolean {
+    return hasActiveGroupLeaderRole(s);
+  },
+
+  isMemberOfGroup(s: AppState, groupId: string): boolean {
+    return hasGroupMembership(s, groupId);
   },
 
   myGroups(s: AppState): { group: Group; membership: Membership; memberCount: number }[] {
@@ -522,7 +568,11 @@ export const sel = {
   sharedReflectionsOn(s: AppState, date: string): Reflection[] {
     return s.reflections
       .filter(
-        (r) => r.groupId === s.activeGroupId && r.date === date && r.visibility === 'shared',
+        (r) =>
+          r.groupId === s.activeGroupId &&
+          r.date === date &&
+          r.visibility === 'shared' &&
+          userCanViewReflection(s, r),
       )
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   },
@@ -538,7 +588,16 @@ export const sel = {
   },
 
   reflectionById(s: AppState, id: string): Reflection | undefined {
-    return s.reflections.find((r) => r.id === id);
+    const reflection = s.reflections.find((r) => r.id === id);
+    return reflection && userCanViewReflection(s, reflection) ? reflection : undefined;
+  },
+
+  canViewReflection(s: AppState, r: Reflection): boolean {
+    return userCanViewReflection(s, r);
+  },
+
+  canEditReflection(s: AppState, r: Reflection): boolean {
+    return userCanEditReflection(s, r);
   },
 
   notificationPref(s: AppState): NotificationPreference | undefined {
