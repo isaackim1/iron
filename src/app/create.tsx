@@ -2,13 +2,13 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { BackChevron, Pill, Screen, Txt } from '@/components/ui';
-import { useApp } from '@/lib/store';
+import { sel, useApp } from '@/lib/store';
 import { colors, fonts, radii } from '@/lib/theme';
 
 export default function Create() {
   const { state, actions, t } = useApp();
   const [groupName, setGroupName] = useState('');
-  const [leaderName, setLeaderName] = useState('');
+  const [leaderName, setLeaderName] = useState(sel.me(state)?.name ?? '');
 
   const submit = () => {
     actions.createGroup(groupName, leaderName);

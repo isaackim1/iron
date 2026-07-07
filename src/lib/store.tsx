@@ -185,9 +185,24 @@ type Action =
   | { type: 'setAnnouncement'; text: string }
   | { type: 'setDayPassage'; weekday: Weekday; passage: BiblePassage }
   | { type: 'publishWeek' }
+  | { type: 'startWeek'; schedule: WeeklySchedule }
   | { type: 'switchGroup'; groupId: string }
   | { type: 'hydrateState'; state: AppState }
   | { type: 'resetDemoData' };
+
+function addUserOnce(users: UserProfile[], user: UserProfile): UserProfile[] {
+  return users.some((u) => u.id === user.id) ? users : [...users, user];
+}
+
+function addMembershipsOnce(
+  current: Membership[],
+  added: Membership[],
+): Membership[] {
+  const fresh = added.filter(
+    (m) => !current.some((mm) => mm.userId === m.userId && mm.groupId === m.groupId),
+  );
+  return fresh.length ? [...current, ...fresh] : current;
+}
 
 function getActiveMembership(s: AppState): Membership | undefined {
   return s.memberships.find(
@@ -223,8 +238,8 @@ function reducer(state: AppState, action: Action): AppState {
     case 'joinGroup':
       return {
         ...state,
-        users: [...state.users, action.user],
-        memberships: [...state.memberships, ...action.memberships],
+        users: addUserOnce(state.users, action.user),
+        memberships: addMembershipsOnce(state.memberships, action.memberships),
         responses: [...state.responses, ...action.responses],
         reflections: [...state.reflections, ...action.reflections],
         currentUserId: action.user.id,
@@ -234,9 +249,9 @@ function reducer(state: AppState, action: Action): AppState {
     case 'createGroup':
       return {
         ...state,
-        users: [...state.users, action.user],
+        users: addUserOnce(state.users, action.user),
         groups: [...state.groups, action.group],
-        memberships: [...state.memberships, ...action.memberships],
+        memberships: addMembershipsOnce(state.memberships, action.memberships),
         schedules: [...state.schedules, action.schedule],
         currentUserId: action.user.id,
         activeGroupId: action.activeGroupId,
@@ -377,6 +392,19 @@ function reducer(state: AppState, action: Action): AppState {
       };
     }
 
+    case 'startWeek': {
+      if (!state.activeGroupId) return state;
+      if (!hasActiveGroupLeaderRole(state)) return state;
+      if (action.schedule.groupId !== state.activeGroupId) return state;
+      const exists = state.schedules.some(
+        (s) =>
+          s.groupId === action.schedule.groupId &&
+          s.weekStart === action.schedule.weekStart,
+      );
+      if (exists) return state;
+      return { ...state, schedules: [...state.schedules, action.schedule] };
+    }
+
     case 'switchGroup':
       if (!hasGroupMembership(state, action.groupId)) return state;
       return { ...state, activeGroupId: action.groupId };
@@ -393,6 +421,27 @@ function reducer(state: AppState, action: Action): AppState {
 }
 
 // ---------------------------------------------------------------------------
+
+/**
+ * Draft Mon–Fri week (Proverbs 20–24 placeholder). Iron is leader-driven:
+ * the draft stays unpublished and invisible to members until the leader
+ * picks chapters, writes a prayer point, and publishes in Manage.
+ */
+function draftWeekSchedule(groupId: string): WeeklySchedule {
+  const monday = mondayOf(today());
+  return {
+    id: `s-${Date.now()}`,
+    groupId,
+    weekStart: isoDate(monday),
+    days: ([0, 1, 2, 3, 4] as Weekday[]).map((w) => ({
+      weekday: w,
+      date: isoDate(addDays(monday, w)),
+      passage: { book: 'Proverbs', chapter: 20 + w },
+    })),
+    prayerPoint: '',
+    published: false,
+  };
+}
 
 export interface AppActions {
   setLanguage: (l: Language) => void;
@@ -411,6 +460,7 @@ export interface AppActions {
   setAnnouncement: (text: string) => void;
   setDayPassage: (weekday: Weekday, passage: BiblePassage) => void;
   publishWeek: () => void;
+  startWeek: () => void;
   switchGroup: (groupId: string) => void;
   resetDemoData: () => void;
 }
@@ -462,29 +512,53 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const group = s.groups.find(
           (g) => g.inviteCode.toUpperCase() === code.trim().toUpperCase(),
         );
-        if (!group || !name.trim()) return false;
-        const user: UserProfile = {
+        const existing = sel.me(s);
+        if (!group || (!existing && !name.trim())) return false;
+        // Already a member (e.g. joining the same code twice): just switch.
+        if (
+          existing &&
+          s.memberships.some((m) => m.userId === existing.id && m.groupId === group.id)
+        ) {
+          dispatch({ type: 'switchGroup', groupId: group.id });
+          return true;
+        }
+        const user: UserProfile = existing ?? {
           id: `u-${Date.now()}`,
           name: name.trim(),
         };
-        const demoContext = buildDemoJoinGroupContext(
-          user.id,
-          group.id,
-          s.groups.map((g) => g.id),
-        );
+        // Demo joiner history/bonus groups only make sense for a fresh profile.
+        const context = existing
+          ? {
+              memberships: [
+                {
+                  userId: user.id,
+                  groupId: group.id,
+                  role: 'member' as const,
+                  joinedAt: isoDate(today()),
+                },
+              ],
+              responses: [],
+              reflections: [],
+            }
+          : buildDemoJoinGroupContext(user.id, group.id, s.groups.map((g) => g.id));
         dispatch({
           type: 'joinGroup',
           user,
           activeGroupId: group.id,
-          memberships: demoContext.memberships,
-          responses: demoContext.responses,
-          reflections: demoContext.reflections,
+          memberships: context.memberships,
+          responses: context.responses,
+          reflections: context.reflections,
         });
         return true;
       },
 
       createGroup: (groupName, leaderName) => {
-        const user: UserProfile = { id: `u-${Date.now()}`, name: leaderName.trim() };
+        const s = stateRef.current;
+        const existing = sel.me(s);
+        const user: UserProfile = existing ?? {
+          id: `u-${Date.now()}`,
+          name: leaderName.trim(),
+        };
         const code = `IRON-${String(1000 + Math.floor(Math.random() * 9000))}`;
         const group: Group = {
           id: `g-${Date.now()}`,
@@ -493,33 +567,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
           inviteCode: code,
           createdBy: user.id,
         };
-        // New groups start with a draft week (Proverbs 20–24) the leader can
-        // adjust in Manage before publishing.
-        const monday = mondayOf(today());
-        const schedule: WeeklySchedule = {
-          id: `s-${Date.now()}`,
-          groupId: group.id,
-          weekStart: isoDate(monday),
-          days: ([0, 1, 2, 3, 4] as Weekday[]).map((w) => ({
-            weekday: w,
-            date: isoDate(addDays(monday, w)),
-            passage: { book: 'Proverbs', chapter: 20 + w },
-          })),
-          prayerPoint: '',
-          published: false,
-        };
-        const demoContext = buildDemoCreateGroupContext(
-          user.id,
-          group.id,
-          stateRef.current.groups.map((g) => g.id),
-        );
+        const schedule = draftWeekSchedule(group.id);
+        // Demo leader-as-member membership only makes sense for a fresh profile.
+        const memberships = existing
+          ? [
+              {
+                userId: user.id,
+                groupId: group.id,
+                role: 'leader' as const,
+                joinedAt: isoDate(today()),
+              },
+            ]
+          : buildDemoCreateGroupContext(user.id, group.id, s.groups.map((g) => g.id))
+              .memberships;
         dispatch({
           type: 'createGroup',
           user,
           group,
           schedule,
           activeGroupId: group.id,
-          memberships: demoContext.memberships,
+          memberships,
         });
         return group.id;
       },
@@ -534,7 +601,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
 
       postReflection: ({ body, visibility, editId }) => {
-        const day = sel.todayDay(stateRef.current);
+        const s = stateRef.current;
+        // Edits keep the original reflection's date/passage, so they must not
+        // depend on today having a scheduled reading.
+        if (editId) {
+          const existing = s.reflections.find((r) => r.id === editId);
+          if (!existing) return;
+          dispatch({
+            type: 'postReflection',
+            date: existing.date,
+            passage: existing.passage,
+            body,
+            visibility,
+            editId,
+          });
+          return;
+        }
+        const day = sel.todayDay(s);
         if (!day) return;
         dispatch({
           type: 'postReflection',
@@ -542,7 +625,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           passage: day.passage,
           body,
           visibility,
-          editId,
         });
       },
 
@@ -551,6 +633,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setDayPassage: (weekday, passage) =>
         dispatch({ type: 'setDayPassage', weekday, passage }),
       publishWeek: () => dispatch({ type: 'publishWeek' }),
+
+      startWeek: () => {
+        const s = stateRef.current;
+        if (!s.activeGroupId) return;
+        dispatch({ type: 'startWeek', schedule: draftWeekSchedule(s.activeGroupId) });
+      },
+
       switchGroup: (groupId) => dispatch({ type: 'switchGroup', groupId }),
       resetDemoData: () => dispatch({ type: 'resetDemoData' }),
     }),

@@ -158,6 +158,10 @@ const en: Dict = {
   'manage.needPrayer': 'add chapters and a prayer point to publish',
   'manage.membersInvite': 'Members & Invite ›',
   'manage.myGroups': 'My groups ›',
+  'manage.noWeek': 'no plan for this week yet',
+  'manage.noWeekSub':
+    'Last week’s plan has ended. Choose this week’s chapters and prayer point, then publish for your group.',
+  'manage.startWeek': 'Set up this week',
 
   'members.title': 'members',
   'members.meta': '{group} · {n} people',
@@ -347,6 +351,10 @@ const ko: Dict = {
   'manage.needPrayer': '말씀과 기도제목을 추가하면 발행할 수 있어요',
   'manage.membersInvite': '멤버 · 초대 ›',
   'manage.myGroups': '내 그룹 ›',
+  'manage.noWeek': '이번 주 계획이 아직 없어요',
+  'manage.noWeekSub':
+    '지난주 일정이 끝났어요. 이번 주 말씀과 기도제목을 정하고 그룹에 발행해 보세요.',
+  'manage.startWeek': '이번 주 준비하기',
 
   'members.title': '멤버',
   'members.meta': '{group} · {n}명',

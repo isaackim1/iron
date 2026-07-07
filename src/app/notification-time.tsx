@@ -9,6 +9,7 @@ import { colors, fonts, radii } from '@/lib/theme';
 const ROW = 44;
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 1);
 const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5);
+const MERIDIEM = [0, 1]; // 0 = AM, 1 = PM
 
 function WheelColumn({
   values,
@@ -140,23 +141,21 @@ export default function NotificationTime() {
                 width={80}
                 render={(v) => String(v).padStart(2, '0')}
               />
-              <View style={{ width: 90, justifyContent: 'center', alignItems: 'center' }}>
-                {(['AM', 'PM'] as const).map((mer) => {
-                  const active = (mer === 'PM') === pm;
-                  return (
-                    <TouchableOpacity key={mer} onPress={() => setPm(mer === 'PM')}>
-                      <Txt
-                        variant="title"
-                        size={active ? 24 : 17}
-                        color={active ? colors.ink : colors.muted}
-                        style={{ opacity: active ? 1 : 0.5, lineHeight: 34 }}
-                      >
-                        {state.language === 'ko' ? (mer === 'AM' ? '오전' : '오후') : mer}
-                      </Txt>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+              <WheelColumn
+                values={MERIDIEM}
+                index={pm ? 1 : 0}
+                onChange={(i) => setPm(i === 1)}
+                width={90}
+                render={(v) =>
+                  state.language === 'ko'
+                    ? v === 0
+                      ? '오전'
+                      : '오후'
+                    : v === 0
+                      ? 'AM'
+                      : 'PM'
+                }
+              />
             </View>
           </View>
           <View style={{ height: 18 }} />

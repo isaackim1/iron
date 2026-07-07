@@ -9,7 +9,12 @@ import { colors, radii } from '@/lib/theme';
 
 function ReflectionCard({ r, index }: { r: Reflection; index: number }) {
   const { state, t } = useApp();
-  const time = r.createdAt.includes('T') ? r.createdAt.split('T')[1].slice(0, 5) : '';
+  // Parse instead of slicing the string: real posts store UTC ISO strings
+  // (trailing Z), seeded data stores local-naive ones — Date handles both.
+  const created = new Date(r.createdAt);
+  const time = Number.isNaN(created.getTime())
+    ? ''
+    : `${String(created.getHours()).padStart(2, '0')}:${String(created.getMinutes()).padStart(2, '0')}`;
   return (
     <Card
       style={{ marginBottom: 12, padding: 18 }}

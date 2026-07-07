@@ -13,7 +13,50 @@ export default function Manage() {
   const isLeader = sel.canManageActiveGroup(state);
 
   if (!isLeader) return <Redirect href="/(tabs)/home" />;
-  if (!group || !schedule) return null;
+  if (!group) return null;
+
+  // Persisted schedules keep their original weekStart, so after a week
+  // rolls over there may be no schedule for the current week yet.
+  if (!schedule) {
+    return (
+      <Screen>
+        <View style={{ height: 8 }} />
+        <Txt variant="title" size={28}>
+          {t('manage.title')}
+        </Txt>
+        <Txt variant="caption" style={{ marginTop: 2 }}>
+          {t('manage.weekOf', {
+            group: sel.groupName(state, group),
+            range: fmtWeekRange(mondayOf(today()), state.language),
+          })}
+        </Txt>
+        <View style={{ height: 20 }} />
+        <Card style={{ alignItems: 'center', paddingVertical: 40 }}>
+          <Txt variant="quoteBold" size={17} color={colors.muted}>
+            {t('manage.noWeek')}
+          </Txt>
+          <View style={{ height: 10 }} />
+          <Txt variant="caption" center style={{ maxWidth: 280 }}>
+            {t('manage.noWeekSub')}
+          </Txt>
+          <View style={{ height: 22 }} />
+          <Pill small label={t('manage.startWeek')} onPress={actions.startWeek} />
+        </Card>
+        <View style={{ height: 24 }} />
+        <TouchableOpacity onPress={() => router.push('/members')}>
+          <Txt variant="button" center size={14} color={colors.ink}>
+            {t('manage.membersInvite')}
+          </Txt>
+        </TouchableOpacity>
+        <View style={{ height: 16 }} />
+        <TouchableOpacity onPress={() => router.push('/groups')}>
+          <Txt variant="button" center size={14} color={colors.ink}>
+            {t('manage.myGroups')}
+          </Txt>
+        </TouchableOpacity>
+      </Screen>
+    );
+  }
 
   const prayerValue =
     state.language === 'ko' && schedule.prayerPointKo

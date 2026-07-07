@@ -39,8 +39,7 @@ export function GroupsGrid() {
       </View>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14 }}>
-        {mine.map(({ group, membership, memberCount }, i) => {
-          const yellow = i % 2 === 0;
+        {mine.map(({ group, membership, memberCount }) => {
           const active = group.id === state.activeGroupId;
           return (
             <Card
@@ -52,18 +51,16 @@ export function GroupsGrid() {
               style={{
                 width: '47%',
                 minHeight: 220,
-                backgroundColor: yellow ? colors.yellow : colors.cardDark,
+                backgroundColor: active ? colors.yellow : colors.cardDark,
                 alignItems: 'center',
                 justifyContent: 'center',
-                borderWidth: active ? 2 : 0,
-                borderColor: colors.charcoal,
               }}
             >
               <Txt
                 variant="quoteBold"
                 center
                 size={20}
-                color={yellow ? colors.ink : colors.yellow}
+                color={active ? colors.ink : colors.yellow}
                 style={{ lineHeight: 28 }}
               >
                 {sel.groupName(state, group)}
@@ -73,7 +70,7 @@ export function GroupsGrid() {
                 variant="quote"
                 center
                 size={13}
-                color={yellow ? colors.charcoal : colors.onDark}
+                color={active ? colors.charcoal : colors.onDark}
               >
                 {state.language === 'ko' && group.descriptionKo
                   ? group.descriptionKo
@@ -84,7 +81,7 @@ export function GroupsGrid() {
                 variant="caption"
                 center
                 size={10}
-                color={yellow ? colors.charcoal : colors.mutedOnDark}
+                color={active ? colors.charcoal : colors.mutedOnDark}
               >
                 {membership.role === 'leader'
                   ? t('groups.leaderMeta', { n: memberCount })

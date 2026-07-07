@@ -19,8 +19,17 @@ import { colors } from '@/lib/theme';
 
 SplashScreen.preventAutoHideAsync();
 
+/** AppProvider renders children only after state hydration, so mounting this
+ *  keeps the splash up until both fonts and persisted state are ready. */
+function HideSplash() {
+  useEffect(() => {
+    SplashScreen.hideAsync();
+  }, []);
+  return null;
+}
+
 export default function RootLayout() {
-  const [loaded] = useFonts({
+  const [loaded, error] = useFonts({
     IstokWeb_400Regular,
     IstokWeb_400Regular_Italic,
     IstokWeb_700Bold,
@@ -30,14 +39,11 @@ export default function RootLayout() {
     NotoSansKR_700Bold,
   });
 
-  useEffect(() => {
-    if (loaded) SplashScreen.hideAsync();
-  }, [loaded]);
-
-  if (!loaded) return null;
+  if (!loaded && !error) return null;
 
   return (
     <AppProvider>
+      <HideSplash />
       <StatusBar style="dark" />
       <Stack
         screenOptions={{

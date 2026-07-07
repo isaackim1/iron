@@ -184,7 +184,19 @@ export default function Home() {
               {t('home.notScheduled')}
             </Txt>
             <View style={{ height: 8 }} />
-            <Txt variant="caption">{t('home.notScheduledHint')}</Txt>
+            {isLeader ? (
+              <>
+                <View style={{ height: 6 }} />
+                <Pill
+                  small
+                  kind="dark"
+                  label={t('manage.startWeek')}
+                  onPress={() => router.navigate('/(tabs)/manage')}
+                />
+              </>
+            ) : (
+              <Txt variant="caption">{t('home.notScheduledHint')}</Txt>
+            )}
           </>
         )}
       </Card>

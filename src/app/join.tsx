@@ -3,13 +3,13 @@ import { useState } from 'react';
 import { TextInput, TouchableOpacity, View } from 'react-native';
 import { BackChevron, Pill, Screen, Txt } from '@/components/ui';
 import { DEMO_CODE } from '@/lib/mock';
-import { useApp } from '@/lib/store';
+import { sel, useApp } from '@/lib/store';
 import { colors, fonts, radii } from '@/lib/theme';
 
 export default function Join() {
   const { state, actions, t } = useApp();
   const [code, setCode] = useState('');
-  const [name, setName] = useState('');
+  const [name, setName] = useState(sel.me(state)?.name ?? '');
   const [error, setError] = useState(false);
 
   const submit = () => {
