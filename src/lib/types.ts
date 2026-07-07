@@ -31,13 +31,17 @@ export interface BiblePassage {
   verseEnd?: number;
 }
 
-/** Weekday index within the reading week: 0 = Monday … 4 = Friday */
-export type Weekday = 0 | 1 | 2 | 3 | 4;
+/** Weekday index within the reading week: 0 = Monday … 6 = Sunday */
+export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 export interface ScheduleDay {
   weekday: Weekday;
   date: string; // ISO date (yyyy-mm-dd)
   passage: BiblePassage;
+  /** Disabled days are rest days: no reading is shown to anyone. */
+  enabled: boolean;
+  /** Day's reading is visible to members once the week itself is published. */
+  published: boolean;
 }
 
 export interface WeeklySchedule {

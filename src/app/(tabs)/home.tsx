@@ -14,7 +14,9 @@ function WeekStrip() {
   const todayIso = isoDate(today());
   const days = Array.from({ length: 7 }, (_, i) => addDays(sunday, i));
   const scheduledDates = new Set(
-    schedule?.published ? schedule.days.map((d) => d.date) : [],
+    schedule?.published
+      ? schedule.days.filter((d) => d.enabled && d.published).map((d) => d.date)
+      : [],
   );
 
   return (
@@ -68,7 +70,14 @@ export default function Home() {
       ? schedule.prayerPointKo
       : schedule?.prayerPoint;
   const showPrayer = schedule && (schedule.published || isLeader) && !!prayer?.trim();
-  const showChapter = schedule && (schedule.published || isLeader) && todayDay;
+  const showChapter =
+    schedule && todayDay && (isLeader || (schedule.published && todayDay.published));
+  // Rest day: today has no enabled reading, or the leader is keeping today's
+  // reading hidden from members. Distinct from "week not set up yet".
+  const restToday =
+    schedule &&
+    !showChapter &&
+    (!sel.todayEntry(state)?.enabled || (schedule.published && !todayDay?.published));
 
   return (
     <Screen>
@@ -177,6 +186,14 @@ export default function Home() {
                 />
               )}
             </View>
+          </>
+        ) : restToday ? (
+          <>
+            <Txt variant="quoteBold" size={22} color={colors.muted} style={{ lineHeight: 34 }}>
+              {t('home.restDay')}
+            </Txt>
+            <View style={{ height: 8 }} />
+            <Txt variant="caption">{t('home.restDayHint')}</Txt>
           </>
         ) : (
           <>

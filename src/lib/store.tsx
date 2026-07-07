@@ -6,7 +6,8 @@ import React, {
   useReducer,
   type ReactNode,
 } from 'react';
-import { addDays, isoDate, mondayOf, today, todayReadingIndex } from './dates';
+import { nextChapterPassage } from './bible';
+import { addDays, fromIso, isoDate, mondayOf, today, todayReadingIndex } from './dates';
 import { translate } from './i18n';
 import {
   buildDemoCreateGroupContext,
@@ -113,13 +114,49 @@ function isPersistedAppState(value: unknown): value is PersistedAppState {
   );
 }
 
+const ALL_WEEKDAYS = [0, 1, 2, 3, 4, 5, 6] as const satisfies readonly Weekday[];
+
+/**
+ * Older persisted schedules stored only Mon–Fri and predate the per-day
+ * enabled/published flags; fill the gaps so the app can assume seven
+ * flagged days. Missing weekend days arrive disabled (rest days).
+ */
+function normalizeSchedule(schedule: WeeklySchedule): WeeklySchedule {
+  const monday = fromIso(schedule.weekStart);
+  let prev: BiblePassage = { book: 'Proverbs', chapter: 19 };
+  const days = ALL_WEEKDAYS.map((weekday): ScheduleDay => {
+    const existing = schedule.days.find((d) => d.weekday === weekday);
+    if (existing) {
+      prev = existing.passage;
+      return {
+        ...existing,
+        enabled: existing.enabled ?? true,
+        published: existing.published ?? true,
+      };
+    }
+    prev = nextChapterPassage(prev);
+    return {
+      weekday,
+      date: isoDate(addDays(monday, weekday)),
+      passage: prev,
+      enabled: false,
+      published: true,
+    };
+  });
+  return { ...schedule, days };
+}
+
+function normalizePersistedAppState(state: PersistedAppState): PersistedAppState {
+  return { ...state, schedules: state.schedules.map(normalizeSchedule) };
+}
+
 async function loadInitialAppState(): Promise<AppState> {
   try {
     const raw = await AsyncStorage.getItem(APP_STATE_STORAGE_KEY);
     if (!raw) return createDemoAppState();
     const parsed: unknown = JSON.parse(raw);
     return isPersistedAppState(parsed)
-      ? createHydratedAppState(persistedSnapshot(parsed))
+      ? createHydratedAppState(normalizePersistedAppState(persistedSnapshot(parsed)))
       : createDemoAppState();
   } catch {
     return createDemoAppState();
@@ -184,6 +221,9 @@ type Action =
   | { type: 'setPrayerPoint'; text: string }
   | { type: 'setAnnouncement'; text: string }
   | { type: 'setDayPassage'; weekday: Weekday; passage: BiblePassage }
+  | { type: 'setDayEnabled'; weekday: Weekday; enabled: boolean }
+  | { type: 'setDayPublished'; weekday: Weekday; published: boolean }
+  | { type: 'autoFillWeek' }
   | { type: 'publishWeek' }
   | { type: 'startWeek'; schedule: WeeklySchedule }
   | { type: 'switchGroup'; groupId: string }
@@ -365,7 +405,10 @@ function reducer(state: AppState, action: Action): AppState {
     case 'setPrayerPoint':
     case 'setAnnouncement':
     case 'publishWeek':
-    case 'setDayPassage': {
+    case 'setDayPassage':
+    case 'setDayEnabled':
+    case 'setDayPublished':
+    case 'autoFillWeek': {
       if (!state.activeGroupId) return state;
       if (!hasActiveGroupLeaderRole(state)) return state;
       const weekStart = isoDate(mondayOf(today()));
@@ -387,6 +430,44 @@ function reducer(state: AppState, action: Action): AppState {
                   d.weekday === action.weekday ? { ...d, passage: action.passage } : d,
                 ),
               };
+            case 'setDayEnabled':
+              return {
+                ...s,
+                days: s.days.map((d) =>
+                  d.weekday === action.weekday ? { ...d, enabled: action.enabled } : d,
+                ),
+              };
+            case 'setDayPublished':
+              return {
+                ...s,
+                days: s.days.map((d) =>
+                  d.weekday === action.weekday ? { ...d, published: action.published } : d,
+                ),
+              };
+            case 'autoFillWeek': {
+              const enabledDays = [...s.days]
+                .sort((a, b) => a.weekday - b.weekday)
+                .filter((d) => d.enabled);
+              if (enabledDays.length === 0) return s;
+              // Anchor on the first enabled day, then continue whole chapters
+              // in canonical order across the remaining enabled days.
+              let passage: BiblePassage = {
+                book: enabledDays[0].passage.book,
+                chapter: enabledDays[0].passage.chapter,
+              };
+              const filled = new Map<Weekday, BiblePassage>();
+              for (const d of enabledDays) {
+                filled.set(d.weekday, passage);
+                passage = nextChapterPassage(passage);
+              }
+              return {
+                ...s,
+                days: s.days.map((d) => {
+                  const p = filled.get(d.weekday);
+                  return p ? { ...d, passage: p } : d;
+                }),
+              };
+            }
           }
         }),
       };
@@ -423,9 +504,9 @@ function reducer(state: AppState, action: Action): AppState {
 // ---------------------------------------------------------------------------
 
 /**
- * Draft Mon–Fri week (Proverbs 20–24 placeholder). Iron is leader-driven:
- * the draft stays unpublished and invisible to members until the leader
- * picks chapters, writes a prayer point, and publishes in Manage.
+ * Draft week (Proverbs placeholder, Mon–Fri on, weekend resting). Iron is
+ * leader-driven: the draft stays unpublished and invisible to members until
+ * the leader picks chapters, writes a prayer point, and publishes in Manage.
  */
 function draftWeekSchedule(groupId: string): WeeklySchedule {
   const monday = mondayOf(today());
@@ -433,10 +514,12 @@ function draftWeekSchedule(groupId: string): WeeklySchedule {
     id: `s-${Date.now()}`,
     groupId,
     weekStart: isoDate(monday),
-    days: ([0, 1, 2, 3, 4] as Weekday[]).map((w) => ({
+    days: ALL_WEEKDAYS.map((w) => ({
       weekday: w,
       date: isoDate(addDays(monday, w)),
       passage: { book: 'Proverbs', chapter: 20 + w },
+      enabled: w <= 4,
+      published: true,
     })),
     prayerPoint: '',
     published: false,
@@ -459,6 +542,9 @@ export interface AppActions {
   setPrayerPoint: (text: string) => void;
   setAnnouncement: (text: string) => void;
   setDayPassage: (weekday: Weekday, passage: BiblePassage) => void;
+  setDayEnabled: (weekday: Weekday, enabled: boolean) => void;
+  setDayPublished: (weekday: Weekday, published: boolean) => void;
+  autoFillWeek: () => void;
   publishWeek: () => void;
   startWeek: () => void;
   switchGroup: (groupId: string) => void;
@@ -596,7 +682,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       clearDraftVerses: () => dispatch({ type: 'clearDraftVerses' }),
 
       amenToday: () => {
-        const day = sel.todayDay(stateRef.current);
+        const day = sel.todayVisibleDay(stateRef.current);
         if (day) dispatch({ type: 'amenToday', date: day.date });
       },
 
@@ -617,7 +703,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           });
           return;
         }
-        const day = sel.todayDay(s);
+        const day = sel.todayVisibleDay(s);
         if (!day) return;
         dispatch({
           type: 'postReflection',
@@ -632,6 +718,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setAnnouncement: (text) => dispatch({ type: 'setAnnouncement', text }),
       setDayPassage: (weekday, passage) =>
         dispatch({ type: 'setDayPassage', weekday, passage }),
+      setDayEnabled: (weekday, enabled) =>
+        dispatch({ type: 'setDayEnabled', weekday, enabled }),
+      setDayPublished: (weekday, published) =>
+        dispatch({ type: 'setDayPublished', weekday, published }),
+      autoFillWeek: () => dispatch({ type: 'autoFillWeek' }),
       publishWeek: () => dispatch({ type: 'publishWeek' }),
 
       startWeek: () => {
@@ -722,8 +813,29 @@ export const sel = {
     );
   },
 
+  /** Today's schedule entry regardless of enabled/published (for rest states). */
+  todayEntry(s: AppState): ScheduleDay | undefined {
+    return sel
+      .activeSchedule(s)
+      ?.days.find((d) => d.weekday === todayReadingIndex());
+  },
+
+  /** Today's reading day, or undefined when today is a rest day. */
   todayDay(s: AppState): ScheduleDay | undefined {
-    return sel.activeSchedule(s)?.days[todayReadingIndex()];
+    const day = sel.todayEntry(s);
+    return day?.enabled ? day : undefined;
+  },
+
+  /**
+   * Today's reading as visible to the current user: leaders see their enabled
+   * days; members additionally need the week and the day published. Gate for
+   * viewing the reading and for creating Amens/reflections against it.
+   */
+  todayVisibleDay(s: AppState): ScheduleDay | undefined {
+    const day = sel.todayDay(s);
+    if (!day) return undefined;
+    if (sel.isActiveGroupLeader(s)) return day;
+    return sel.activeSchedule(s)?.published && day.published ? day : undefined;
   },
 
   groupMembers(s: AppState, groupId: string): { user: UserProfile; role: string }[] {

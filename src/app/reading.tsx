@@ -8,7 +8,9 @@ import { colors, fonts, radii } from '@/lib/theme';
 
 export default function Reading() {
   const { state, actions, t } = useApp();
-  const todayDay = sel.todayDay(state);
+  // Route-level guard: members must not see disabled or still-hidden days,
+  // even via direct/stale navigation. Leaders keep access to manage.
+  const todayDay = sel.todayVisibleDay(state);
 
   useEffect(() => {
     actions.clearDraftVerses();

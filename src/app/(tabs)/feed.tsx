@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { View } from 'react-native';
 import { Avatar, Card, Pill, Screen, Txt } from '@/components/ui';
 import { passageLabel } from '@/lib/bible';
-import { addDays, fmtDateShort, fromIso, isoDate } from '@/lib/dates';
+import { addDays, fmtDateShort, fromIso, isoDate, today } from '@/lib/dates';
 import { sel, useApp } from '@/lib/store';
 import type { Reflection } from '@/lib/types';
 import { colors, radii } from '@/lib/theme';
@@ -54,10 +54,13 @@ export default function Feed() {
   const { responded: respondedCount, total } = sel.respondedCountToday(state);
   if (!group) return null;
 
+  // Rest day for this viewer: no enabled reading today, or the reading is not
+  // yet visible to members (week unpublished or day hidden).
+  const restToday = !sel.todayVisibleDay(state);
+
   const todayIso = todayDay?.date;
-  const yesterdayIso = todayIso
-    ? isoDate(addDays(fromIso(todayIso), -1))
-    : undefined;
+  // On rest days fall back to calendar-yesterday so recent shares stay visible.
+  const yesterdayIso = isoDate(addDays(todayIso ? fromIso(todayIso) : today(), -1));
 
   const todayShared = todayIso ? sel.sharedReflectionsOn(state, todayIso) : [];
   const yesterdayShared = yesterdayIso ? sel.sharedReflectionsOn(state, yesterdayIso) : [];
@@ -79,7 +82,10 @@ export default function Feed() {
         </Txt>
         <View style={{ height: 14 }} />
         {[
-          [t('feed.todayChapter'), todayDay ? passageLabel(todayDay.passage, state.language) : '—'],
+          [
+            t('feed.todayChapter'),
+            !restToday && todayDay ? passageLabel(todayDay.passage, state.language) : '—',
+          ],
           [t('feed.responded'), t('feed.of', { x: respondedCount, n: total })],
           [t('feed.total'), String(total)],
         ].map(([k, v]) => (
@@ -105,7 +111,17 @@ export default function Feed() {
       )}
       <View style={{ height: 12 }} />
 
-      {!responded ? (
+      {restToday ? (
+        <Card style={{ alignItems: 'center', paddingVertical: 26 }}>
+          <Txt variant="quoteBold" size={17} color={colors.muted}>
+            {t('home.restDay')}
+          </Txt>
+          <View style={{ height: 6 }} />
+          <Txt variant="caption" center>
+            {t('home.restDayHint')}
+          </Txt>
+        </Card>
+      ) : !responded ? (
         /* soft gate — respond first, then see today's reflections */
         <Card style={{ alignItems: 'center', paddingVertical: 30 }}>
           <Txt variant="body" center size={14} style={{ lineHeight: 22 }}>

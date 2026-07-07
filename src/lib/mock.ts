@@ -76,10 +76,12 @@ export const seedMemberships: Membership[] = [
 ];
 
 function weekDays(monday: Date, book: string, firstChapter: number): ScheduleDay[] {
-  return ([0, 1, 2, 3, 4] as Weekday[]).map((w) => ({
+  return ([0, 1, 2, 3, 4, 5, 6] as Weekday[]).map((w) => ({
     weekday: w,
     date: isoDate(addDays(monday, w)),
     passage: { book, chapter: firstChapter + w },
+    enabled: w <= 4,
+    published: true,
   }));
 }
 
@@ -118,7 +120,9 @@ export function buildSeedActivity(): {
   reflections: Reflection[];
 } {
   const monday = mondayOf(today());
-  const ti = todayReadingIndex();
+  // Seed weekends rest (days 5–6 disabled), so demo activity clusters on the
+  // latest weekday reading.
+  const ti = Math.min(todayReadingIndex(), 4);
   const todayIso = isoDate(addDays(monday, ti));
   const yesterdayIso = isoDate(addDays(monday, ti - 1)); // may fall on Sunday; fine for mock
   const todayCh = 20 + ti;
@@ -234,7 +238,7 @@ export function buildJoinerHistory(
   userId: string,
 ): { responses: ResponseEntry[]; reflections: Reflection[] } {
   const monday = mondayOf(today());
-  const ti = todayReadingIndex();
+  const ti = Math.min(todayReadingIndex(), 4);
   const d1 = isoDate(addDays(monday, ti - 1));
   const d2 = isoDate(addDays(monday, ti - 2));
 

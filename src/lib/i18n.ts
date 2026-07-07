@@ -59,7 +59,7 @@ const en: Dict = {
   'home.todayLabel': 'today’s chapter',
   'home.read': 'Read',
   'home.manage': 'Manage ›',
-  'home.weekPublished': 'this week · published ✓ · Mon–Fri scheduled',
+  'home.weekPublished': 'this week · published ✓',
   'home.weekDraft': 'this week · draft — publish it in Manage',
   'home.notScheduled': 'not scheduled yet',
   'home.notScheduledHint': 'you’ll be notified when the week is ready',
@@ -67,6 +67,8 @@ const en: Dict = {
     'Your community prayer point will be pinned here once the week is published.',
   'home.amenDone': 'Amen ✓',
   'home.reflectionDone': 'Reflection ✓',
+  'home.restDay': 'no reading today',
+  'home.restDayHint': 'a quiet rest day — see you at the next reading',
 
   'prayer.from': '— from Sunday’s gathering · amen together',
   'prayer.close': 'Close',
@@ -162,6 +164,9 @@ const en: Dict = {
   'manage.noWeekSub':
     'Last week’s plan has ended. Choose this week’s chapters and prayer point, then publish for your group.',
   'manage.startWeek': 'Set up this week',
+  'manage.daysHint': 'tap a day to add or rest it',
+  'manage.noDays': 'no reading days this week',
+  'manage.autofill': 'Auto-fill chapters in order ›',
 
   'members.title': 'members',
   'members.meta': '{group} · {n} people',
@@ -253,13 +258,15 @@ const ko: Dict = {
   'home.todayLabel': '오늘의 말씀',
   'home.read': '읽기',
   'home.manage': '관리 ›',
-  'home.weekPublished': '이번 주 · 발행 완료 ✓ · 월–금 예정',
+  'home.weekPublished': '이번 주 · 발행 완료 ✓',
   'home.weekDraft': '이번 주 · 초안 — 관리 탭에서 발행하세요',
   'home.notScheduled': '아직 정해지지 않았어요',
   'home.notScheduledHint': '이번 주가 준비되면 알려드릴게요',
   'home.prayerEmpty': '이번 주가 발행되면 공동체 기도제목이 이곳에 걸려요.',
   'home.amenDone': '아멘 ✓',
   'home.reflectionDone': '묵상 완료 ✓',
+  'home.restDay': '오늘은 말씀이 없어요',
+  'home.restDayHint': '쉬어가는 날이에요 — 다음 말씀에서 만나요',
 
   'prayer.from': '— 주일 모임에서 · 함께 아멘',
   'prayer.close': '닫기',
@@ -355,6 +362,9 @@ const ko: Dict = {
   'manage.noWeekSub':
     '지난주 일정이 끝났어요. 이번 주 말씀과 기도제목을 정하고 그룹에 발행해 보세요.',
   'manage.startWeek': '이번 주 준비하기',
+  'manage.daysHint': '요일을 눌러 읽는 날을 정해요',
+  'manage.noDays': '이번 주에는 읽는 요일이 없어요',
+  'manage.autofill': '장 순서대로 자동 채우기 ›',
 
   'members.title': '멤버',
   'members.meta': '{group} · {n}명',

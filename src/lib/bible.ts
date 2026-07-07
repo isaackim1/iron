@@ -80,6 +80,15 @@ export function bookByName(en: string): BibleBook | undefined {
   return BIBLE_BOOKS.find((b) => b.en === en);
 }
 
+/** Whole chapter after `p` in canonical order, rolling into the next book. */
+export function nextChapterPassage(p: BiblePassage): BiblePassage {
+  const idx = BIBLE_BOOKS.findIndex((b) => b.en === p.book);
+  const book = BIBLE_BOOKS[Math.max(idx, 0)];
+  if (p.chapter < book.chapters) return { book: book.en, chapter: p.chapter + 1 };
+  const next = BIBLE_BOOKS[(Math.max(idx, 0) + 1) % BIBLE_BOOKS.length];
+  return { book: next.en, chapter: 1 };
+}
+
 export function passageLabel(p: BiblePassage, lang: Language): string {
   const book = bookByName(p.book);
   const bookName = lang === 'ko' ? (book?.ko ?? p.book) : p.book;

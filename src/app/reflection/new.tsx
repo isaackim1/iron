@@ -13,7 +13,9 @@ export default function ReflectionNew() {
   const editing = edit ? sel.reflectionById(state, edit) : undefined;
   const blockedEdit = !!edit && (!editing || !sel.canEditReflection(state, editing));
 
-  const todayDay = sel.todayDay(state);
+  // New reflections may only target a day visible to this user; edits keep
+  // using the existing reflection's own date/passage below.
+  const todayDay = sel.todayVisibleDay(state);
   const passage = blockedEdit ? undefined : (editing?.passage ?? todayDay?.passage);
   const date = blockedEdit ? undefined : (editing?.date ?? todayDay?.date);
   const highlightNs = blockedEdit ? [] : (editing?.highlightedVerses ?? state.draftVerses);

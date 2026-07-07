@@ -1,3 +1,4 @@
+import Feather from '@expo/vector-icons/Feather';
 import { Redirect, router } from 'expo-router';
 import { TextInput, TouchableOpacity, View } from 'react-native';
 import { Card, Pill, Screen, Txt } from '@/components/ui';
@@ -67,6 +68,7 @@ export default function Manage() {
       ? schedule.announcementKo
       : (schedule.announcement ?? '');
   const canPublish = prayerValue.trim().length > 0;
+  const enabledDays = schedule.days.filter((d) => d.enabled);
 
   return (
     <Screen>
@@ -85,32 +87,100 @@ export default function Manage() {
       <Txt variant="title" size={16} style={{ marginBottom: 8 }}>
         {t('manage.chapters')}
       </Txt>
-      <Card style={{ paddingVertical: 8, paddingHorizontal: 20 }}>
-        {schedule.days.map((d, i) => (
+      {/* which days have a reading */}
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          paddingHorizontal: 4,
+          marginBottom: 8,
+        }}
+      >
+        {schedule.days.map((d) => (
           <TouchableOpacity
             key={d.weekday}
-            activeOpacity={0.7}
-            onPress={() => router.push(`/picker/books?day=${d.weekday}`)}
+            onPress={() => actions.setDayEnabled(d.weekday, !d.enabled)}
+            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
             style={{
-              flexDirection: 'row',
+              width: 36,
+              height: 36,
+              borderRadius: 18,
               alignItems: 'center',
-              paddingVertical: 13,
-              borderTopWidth: i === 0 ? 0 : 1,
-              borderTopColor: colors.hairline,
+              justifyContent: 'center',
+              backgroundColor: d.enabled ? colors.yellow : colors.input,
             }}
           >
-            <Txt variant="caption" size={12} style={{ width: 64 }}>
-              {dayName(fromIso(d.date), state.language)} {fromIso(d.date).getDate()}
-            </Txt>
-            <Txt variant="quoteBold" size={16} style={{ flex: 1, lineHeight: 24 }}>
-              {passageLabel(d.passage, state.language)}
-            </Txt>
-            <Txt variant="caption" color={colors.muted}>
-              ›
+            <Txt
+              variant="button"
+              size={12}
+              color={d.enabled ? colors.ink : colors.muted}
+            >
+              {dayName(fromIso(d.date), state.language).slice(0, 1)}
             </Txt>
           </TouchableOpacity>
         ))}
+      </View>
+      <Txt variant="caption" center style={{ marginBottom: 10 }}>
+        {t('manage.daysHint')}
+      </Txt>
+
+      <Card style={{ paddingVertical: 8, paddingHorizontal: 20 }}>
+        {enabledDays.length === 0 ? (
+          <Txt variant="caption" center style={{ paddingVertical: 16 }}>
+            {t('manage.noDays')}
+          </Txt>
+        ) : (
+          enabledDays.map((d, i) => (
+            <View
+              key={d.weekday}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                borderTopWidth: i === 0 ? 0 : 1,
+                borderTopColor: colors.hairline,
+              }}
+            >
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => router.push(`/picker/books?day=${d.weekday}`)}
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: 13,
+                }}
+              >
+                <Txt variant="caption" size={12} style={{ width: 64 }}>
+                  {dayName(fromIso(d.date), state.language)} {fromIso(d.date).getDate()}
+                </Txt>
+                <Txt variant="quoteBold" size={16} style={{ flex: 1, lineHeight: 24 }}>
+                  {passageLabel(d.passage, state.language)}
+                </Txt>
+                <Txt variant="caption" color={colors.muted}>
+                  ›
+                </Txt>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => actions.setDayPublished(d.weekday, !d.published)}
+                hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+                style={{ paddingLeft: 14, paddingVertical: 13 }}
+              >
+                <Feather
+                  name={d.published ? 'eye' : 'eye-off'}
+                  size={15}
+                  color={d.published ? colors.ink : colors.muted}
+                />
+              </TouchableOpacity>
+            </View>
+          ))
+        )}
       </Card>
+      <View style={{ height: 10 }} />
+      <TouchableOpacity onPress={actions.autoFillWeek}>
+        <Txt variant="caption" center>
+          {t('manage.autofill')}
+        </Txt>
+      </TouchableOpacity>
 
       <View style={{ height: 20 }} />
       <Txt variant="title" size={16} style={{ marginBottom: 8 }}>

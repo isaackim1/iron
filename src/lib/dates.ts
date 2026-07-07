@@ -31,13 +31,9 @@ export function today(): Date {
   return new Date();
 }
 
-/**
- * Index of today's reading within the Mon–Fri week (0–4).
- * On the weekend we keep Friday's reading up.
- */
+/** Index of today within the Mon–Sun reading week (0–6). */
 export function todayReadingIndex(): number {
-  const dow = (today().getDay() + 6) % 7; // 0 = Mon … 6 = Sun
-  return Math.min(dow, 4);
+  return (today().getDay() + 6) % 7; // 0 = Mon … 6 = Sun
 }
 
 const MONTHS_EN = [
@@ -76,11 +72,12 @@ export function fmtDateLong(d: Date, lang: Language): string {
   return `${fullDays[(d.getDay() + 6) % 7]}, ${d.getDate()} ${fullMonths[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-/** "13–17 Jul" / "7월 13–17일" */
+/** "13–19 Jul" / "7월 13–19일" */
 export function fmtWeekRange(monday: Date, lang: Language): string {
-  const fri = addDays(monday, 4);
-  if (lang === 'ko') return `${monday.getMonth() + 1}월 ${monday.getDate()}–${fri.getDate()}일`;
-  return `${monday.getDate()}–${fri.getDate()} ${MONTHS_EN[fri.getMonth()]}`;
+  const sunday = addDays(monday, 6);
+  if (lang === 'ko')
+    return `${monday.getMonth() + 1}월 ${monday.getDate()}–${sunday.getDate()}일`;
+  return `${monday.getDate()}–${sunday.getDate()} ${MONTHS_EN[sunday.getMonth()]}`;
 }
 
 /** "07:40" → "7:40 AM" / "오전 7:40" */
