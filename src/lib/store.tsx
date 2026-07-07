@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, {
   createContext,
   useContext,
@@ -32,6 +33,7 @@ import type {
 } from './types';
 
 export const APP_STATE_VERSION = 1;
+const APP_STATE_STORAGE_KEY = 'iron.appState.v1';
 
 export interface PersistedAppState {
   version: number;
@@ -81,6 +83,54 @@ export function createHydratedAppState(persisted: PersistedAppState): AppState {
     ...persisted,
     ...transientInitialState(),
   };
+}
+
+function persistedSnapshot(state: PersistedAppState): PersistedAppState {
+  return PERSISTED_STATE_KEYS.reduce(
+    (snapshot, key) => ({ ...snapshot, [key]: state[key] }),
+    {} as PersistedAppState,
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isPersistedAppState(value: unknown): value is PersistedAppState {
+  if (!isRecord(value)) return false;
+  if (value.version !== APP_STATE_VERSION) return false;
+  if (value.language !== 'en' && value.language !== 'ko') return false;
+  if (value.currentUserId !== null && typeof value.currentUserId !== 'string') return false;
+  if (value.activeGroupId !== null && typeof value.activeGroupId !== 'string') return false;
+  return (
+    Array.isArray(value.users) &&
+    Array.isArray(value.groups) &&
+    Array.isArray(value.memberships) &&
+    Array.isArray(value.schedules) &&
+    Array.isArray(value.responses) &&
+    Array.isArray(value.reflections) &&
+    Array.isArray(value.notificationPrefs)
+  );
+}
+
+async function loadInitialAppState(): Promise<AppState> {
+  try {
+    const raw = await AsyncStorage.getItem(APP_STATE_STORAGE_KEY);
+    if (!raw) return createDemoAppState();
+    const parsed: unknown = JSON.parse(raw);
+    return isPersistedAppState(parsed)
+      ? createHydratedAppState(persistedSnapshot(parsed))
+      : createDemoAppState();
+  } catch {
+    return createDemoAppState();
+  }
+}
+
+async function savePersistedAppState(state: AppState): Promise<void> {
+  await AsyncStorage.setItem(
+    APP_STATE_STORAGE_KEY,
+    JSON.stringify(persistedSnapshot(state)),
+  );
 }
 
 export function createDemoAppState(): AppState {
@@ -136,6 +186,7 @@ type Action =
   | { type: 'setDayPassage'; weekday: Weekday; passage: BiblePassage }
   | { type: 'publishWeek' }
   | { type: 'switchGroup'; groupId: string }
+  | { type: 'hydrateState'; state: AppState }
   | { type: 'resetDemoData' };
 
 function getActiveMembership(s: AppState): Membership | undefined {
@@ -330,6 +381,9 @@ function reducer(state: AppState, action: Action): AppState {
       if (!hasGroupMembership(state, action.groupId)) return state;
       return { ...state, activeGroupId: action.groupId };
 
+    case 'hydrateState':
+      return action.state;
+
     case 'resetDemoData':
       return createDemoAppState();
 
@@ -371,10 +425,33 @@ const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, createDemoAppState);
+  const [hydrated, setHydrated] = React.useState(false);
   const stateRef = React.useRef(state);
   React.useEffect(() => {
     stateRef.current = state;
   });
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function hydrate() {
+      const initialState = await loadInitialAppState();
+      if (cancelled) return;
+      dispatch({ type: 'hydrateState', state: initialState });
+      setHydrated(true);
+    }
+
+    void hydrate();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (!hydrated) return;
+    void savePersistedAppState(state).catch(() => {});
+  }, [hydrated, state]);
 
   const actions = useMemo<AppActions>(
     () => ({
@@ -488,6 +565,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }),
     [state, actions],
   );
+
+  if (!hydrated) return null;
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
