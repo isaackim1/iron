@@ -10,9 +10,9 @@ export default function Create() {
   const [groupName, setGroupName] = useState('');
   const [leaderName, setLeaderName] = useState(sel.me(state)?.name ?? '');
 
-  const submit = () => {
-    actions.createGroup(groupName, leaderName);
-    router.push('/invite-code');
+  const submit = async () => {
+    const groupId = await actions.createGroup(groupName, leaderName);
+    if (groupId) router.push('/invite-code');
   };
 
   const inputStyle = {

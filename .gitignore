@@ -36,7 +36,8 @@ yarn-error.*
 *.ai
 ~ai-*.tmp
 
-# local env files
+# local env files (never commit real Supabase keys; use .env.example)
+.env
 .env*.local
 
 # typescript

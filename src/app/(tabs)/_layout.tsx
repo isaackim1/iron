@@ -6,8 +6,10 @@ import { colors } from '@/lib/theme';
 export default function TabsLayout() {
   const { state, t } = useApp();
 
+  // Route through the index so Supabase mode lands on sign-in when signed
+  // out and demo mode lands on welcome — the index knows the difference.
   if (!state.currentUserId || !state.activeGroupId) {
-    return <Redirect href="/welcome" />;
+    return <Redirect href="/" />;
   }
 
   const isLeader = sel.canManageActiveGroup(state);

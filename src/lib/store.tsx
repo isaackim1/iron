@@ -6,9 +6,13 @@ import React, {
   useReducer,
   type ReactNode,
 } from 'react';
+import { AppState as RNAppState } from 'react-native';
 import { nextChapterPassage } from './bible';
 import { addDays, fromIso, isoDate, mondayOf, today, todayReadingIndex } from './dates';
+import { loadServerAppData } from './db/load';
 import { translate } from './i18n';
+import { isSupabaseEnabled, supabase } from './supabase';
+import { createSupabaseActions } from './supabase-actions';
 import {
   buildDemoCreateGroupContext,
   buildDemoJoinGroupContext,
@@ -35,6 +39,37 @@ import type {
 
 export const APP_STATE_VERSION = 1;
 const APP_STATE_STORAGE_KEY = 'iron.appState.v1';
+
+/**
+ * In Supabase mode the server owns the data; only these device-level
+ * preferences persist locally. Kept under a separate key so demo-mode
+ * persisted state and Supabase mode never mix.
+ */
+const DEVICE_PREFS_STORAGE_KEY = 'iron.devicePrefs.v1';
+
+interface DevicePrefs {
+  language: Language;
+  activeGroupId: string | null;
+}
+
+async function loadDevicePrefs(): Promise<DevicePrefs> {
+  try {
+    const raw = await AsyncStorage.getItem(DEVICE_PREFS_STORAGE_KEY);
+    if (raw) {
+      const parsed: unknown = JSON.parse(raw);
+      if (isRecord(parsed) && (parsed.language === 'en' || parsed.language === 'ko')) {
+        return {
+          language: parsed.language,
+          activeGroupId:
+            typeof parsed.activeGroupId === 'string' ? parsed.activeGroupId : null,
+        };
+      }
+    }
+  } catch {
+    // fall through to defaults
+  }
+  return { language: 'en', activeGroupId: null };
+}
 
 export interface PersistedAppState {
   version: number;
@@ -188,7 +223,25 @@ export function createDemoAppState(): AppState {
   };
 }
 
-type Action =
+/** Supabase mode never touches demo seeds: signed-out state is simply empty. */
+export function createEmptyAppState(language: Language): AppState {
+  return {
+    version: APP_STATE_VERSION,
+    language,
+    currentUserId: null,
+    activeGroupId: null,
+    users: [],
+    groups: [],
+    memberships: [],
+    schedules: [],
+    responses: [],
+    reflections: [],
+    notificationPrefs: [],
+    ...transientInitialState(),
+  };
+}
+
+export type Action =
   | { type: 'setLanguage'; language: Language }
   | {
       type: 'joinGroup';
@@ -229,6 +282,29 @@ type Action =
   | { type: 'switchGroup'; groupId: string }
   | { type: 'hydrateState'; state: AppState }
   | { type: 'resetDemoData' };
+
+/**
+ * Ordered chapter auto-fill: anchor on the first enabled day, then continue
+ * whole chapters in canonical order across the remaining enabled days.
+ * Shared by the reducer and the Supabase action (which mirrors the same
+ * fill to the server), so the two can never diverge.
+ */
+export function computeAutoFillPassages(days: ScheduleDay[]): Map<Weekday, BiblePassage> {
+  const enabledDays = [...days]
+    .sort((a, b) => a.weekday - b.weekday)
+    .filter((d) => d.enabled);
+  const filled = new Map<Weekday, BiblePassage>();
+  if (enabledDays.length === 0) return filled;
+  let passage: BiblePassage = {
+    book: enabledDays[0].passage.book,
+    chapter: enabledDays[0].passage.chapter,
+  };
+  for (const d of enabledDays) {
+    filled.set(d.weekday, passage);
+    passage = nextChapterPassage(passage);
+  }
+  return filled;
+}
 
 function addUserOnce(users: UserProfile[], user: UserProfile): UserProfile[] {
   return users.some((u) => u.id === user.id) ? users : [...users, user];
@@ -445,21 +521,8 @@ function reducer(state: AppState, action: Action): AppState {
                 ),
               };
             case 'autoFillWeek': {
-              const enabledDays = [...s.days]
-                .sort((a, b) => a.weekday - b.weekday)
-                .filter((d) => d.enabled);
-              if (enabledDays.length === 0) return s;
-              // Anchor on the first enabled day, then continue whole chapters
-              // in canonical order across the remaining enabled days.
-              let passage: BiblePassage = {
-                book: enabledDays[0].passage.book,
-                chapter: enabledDays[0].passage.chapter,
-              };
-              const filled = new Map<Weekday, BiblePassage>();
-              for (const d of enabledDays) {
-                filled.set(d.weekday, passage);
-                passage = nextChapterPassage(passage);
-              }
+              const filled = computeAutoFillPassages(s.days);
+              if (filled.size === 0) return s;
               return {
                 ...s,
                 days: s.days.map((d) => {
@@ -528,8 +591,9 @@ function draftWeekSchedule(groupId: string): WeeklySchedule {
 
 export interface AppActions {
   setLanguage: (l: Language) => void;
-  joinGroup: (code: string, name: string) => boolean;
-  createGroup: (groupName: string, leaderName: string) => string;
+  /** Async in both modes: Supabase joins via RPC, demo resolves immediately. */
+  joinGroup: (code: string, name: string) => Promise<boolean>;
+  createGroup: (groupName: string, leaderName: string) => Promise<string | null>;
   setNotificationTime: (time: string) => void;
   toggleDraftVerse: (n: number) => void;
   clearDraftVerses: () => void;
@@ -563,37 +627,173 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, createDemoAppState);
   const [hydrated, setHydrated] = React.useState(false);
   const stateRef = React.useRef(state);
+  const supabaseMode = isSupabaseEnabled();
+  /** Which user's server data is currently loaded (avoids duplicate loads). */
+  const loadedUidRef = React.useRef<string | null>(null);
   React.useEffect(() => {
     stateRef.current = state;
   });
 
+  /**
+   * Pull the current user's world from Supabase and swap it into app state.
+   * The previous activeGroupId is kept when still valid, otherwise the first
+   * group (or none) is selected.
+   */
+  const reloadFromServer = React.useCallback(
+    async (uid: string, overrideActiveGroupId?: string) => {
+      const data = await loadServerAppData(uid);
+      const current = stateRef.current;
+      const myGroupIds = new Set(
+        data.memberships.filter((m) => m.userId === uid).map((m) => m.groupId),
+      );
+      const preferred = overrideActiveGroupId ?? current.activeGroupId;
+      const activeGroupId =
+        preferred && myGroupIds.has(preferred)
+          ? preferred
+          : (data.memberships.find((m) => m.userId === uid)?.groupId ?? null);
+      loadedUidRef.current = uid;
+      dispatch({
+        type: 'hydrateState',
+        state: {
+          version: APP_STATE_VERSION,
+          language: current.language,
+          currentUserId: uid,
+          activeGroupId,
+          ...data,
+          ...transientInitialState(),
+        },
+      });
+    },
+    [],
+  );
+
+  // Hydration — demo mode restores the persisted local world; Supabase mode
+  // restores device prefs, then follows the auth session. The two paths use
+  // different storage keys and never mix.
   React.useEffect(() => {
     let cancelled = false;
 
-    async function hydrate() {
-      const initialState = await loadInitialAppState();
-      if (cancelled) return;
-      dispatch({ type: 'hydrateState', state: initialState });
-      setHydrated(true);
+    if (!supabaseMode || !supabase) {
+      async function hydrateDemo() {
+        const initialState = await loadInitialAppState();
+        if (cancelled) return;
+        dispatch({ type: 'hydrateState', state: initialState });
+        setHydrated(true);
+      }
+      void hydrateDemo();
+      return () => {
+        cancelled = true;
+      };
     }
 
-    void hydrate();
+    const client = supabase;
+
+    async function hydrateFromSession(
+      uid: string | null,
+      language: Language,
+      preferredGroupId?: string,
+    ) {
+      if (uid) {
+        try {
+          await reloadFromServer(uid, preferredGroupId);
+        } catch (e) {
+          // Offline / first-load failure: keep the session, start empty
+          // rather than crashing; data arrives on the next successful load.
+          console.warn('[iron] initial server load failed:', e);
+          loadedUidRef.current = uid;
+          dispatch({
+            type: 'hydrateState',
+            state: { ...createEmptyAppState(language), currentUserId: uid },
+          });
+        }
+      } else {
+        loadedUidRef.current = null;
+        dispatch({ type: 'hydrateState', state: createEmptyAppState(language) });
+      }
+      if (!cancelled) setHydrated(true);
+    }
+
+    async function hydrateSupabase() {
+      const prefs = await loadDevicePrefs();
+      if (cancelled) return;
+      dispatch({ type: 'setLanguage', language: prefs.language });
+      const { data } = await client.auth.getSession();
+      if (cancelled) return;
+      // The stored active group is passed explicitly — reload validates it
+      // against the fresh memberships and falls back to the first group.
+      await hydrateFromSession(
+        data.session?.user.id ?? null,
+        prefs.language,
+        prefs.activeGroupId ?? undefined,
+      );
+    }
+
+    void hydrateSupabase();
+
+    const { data: sub } = client.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return;
+      const uid = session?.user.id ?? null;
+      if (event === 'SIGNED_OUT' || !uid) {
+        if (loadedUidRef.current !== null) {
+          loadedUidRef.current = null;
+          dispatch({
+            type: 'hydrateState',
+            state: createEmptyAppState(stateRef.current.language),
+          });
+        }
+        return;
+      }
+      // SIGNED_IN also fires on app foreground/token refresh; only load when
+      // the user actually changed.
+      if (loadedUidRef.current !== uid) {
+        void hydrateFromSession(uid, stateRef.current.language);
+      }
+    });
 
     return () => {
       cancelled = true;
+      sub.subscription.unsubscribe();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Supabase session tokens refresh only while the app is foregrounded.
+  React.useEffect(() => {
+    if (!supabase) return;
+    const client = supabase;
+    const sub = RNAppState.addEventListener('change', (s) => {
+      if (s === 'active') void client.auth.startAutoRefresh();
+      else void client.auth.stopAutoRefresh();
+    });
+    void client.auth.startAutoRefresh();
+    return () => {
+      sub.remove();
+      void client.auth.stopAutoRefresh();
     };
   }, []);
 
+  // Persistence — demo mode snapshots the whole world; Supabase mode saves
+  // device prefs only (the server owns the data).
   React.useEffect(() => {
     if (!hydrated) return;
-    void savePersistedAppState(state).catch(() => {});
-  }, [hydrated, state]);
+    if (supabaseMode) {
+      const prefs: DevicePrefs = {
+        language: state.language,
+        activeGroupId: state.activeGroupId,
+      };
+      void AsyncStorage.setItem(DEVICE_PREFS_STORAGE_KEY, JSON.stringify(prefs)).catch(
+        () => {},
+      );
+    } else {
+      void savePersistedAppState(state).catch(() => {});
+    }
+  }, [hydrated, state, supabaseMode]);
 
-  const actions = useMemo<AppActions>(
+  const demoActions = useMemo<AppActions>(
     () => ({
       setLanguage: (language) => dispatch({ type: 'setLanguage', language }),
 
-      joinGroup: (code, name) => {
+      joinGroup: async (code, name) => {
         const s = stateRef.current;
         const group = s.groups.find(
           (g) => g.inviteCode.toUpperCase() === code.trim().toUpperCase(),
@@ -638,7 +838,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return true;
       },
 
-      createGroup: (groupName, leaderName) => {
+      createGroup: async (groupName, leaderName) => {
         const s = stateRef.current;
         const existing = sel.me(s);
         const user: UserProfile = existing ?? {
@@ -736,6 +936,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }),
     [],
   );
+
+  const supabaseActions = useMemo<AppActions | null>(
+    () =>
+      supabaseMode
+        ? createSupabaseActions({ dispatch, stateRef, reloadFromServer })
+        : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [reloadFromServer],
+  );
+
+  const actions = supabaseActions ?? demoActions;
 
   const value = useMemo<AppContextValue>(
     () => ({

@@ -35,6 +35,8 @@ export interface BiblePassage {
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 export interface ScheduleDay {
+  /** Supabase schedule_days row id; absent in local demo mode. */
+  id?: string;
   weekday: Weekday;
   date: string; // ISO date (yyyy-mm-dd)
   passage: BiblePassage;

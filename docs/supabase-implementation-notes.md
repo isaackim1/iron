@@ -1,100 +1,148 @@
 # Iron — Supabase implementation notes
 
-Companion to `docs/supabase-contract.md`. The contract says *what* the backend
-is; this file says how to review and run the SQL under `supabase/migrations/`
-and what deliberately isn't done yet.
+Companion to `docs/supabase-contract.md`. Covers the SQL under
+`supabase/migrations/`, the app integration under `src/lib/`, how to set it
+up, and what is deliberately not done yet.
 
 ## What exists
+
+### Database (schema branch)
 
 | File | Contents |
 | --- | --- |
 | `supabase/migrations/001_initial_schema.sql` | `private` schema, 9 tables, constraints, indexes, `updated_at` trigger, two integrity triggers (day-date, reflection-snapshot). |
 | `supabase/migrations/002_rls_policies.sql` | RLS enabled on all 9 tables, 4 `private.*` helper predicates, 21 policies, column-level grants. |
 | `supabase/migrations/003_rpc_functions.sql` | 5 `security definer` RPCs (`create_group_with_leader`, `join_group_by_invite_code`, `start_week`, `publish_weekly_schedule`, `rotate_invite_code`) + 2 private helpers; deferred RPCs listed as TODOs. |
+| `supabase/validate-local.mjs` | Docker-free migration validation: runs all three migrations on PGlite (real Postgres in WASM) with an auth/roles shim, then 53 behavioral RLS assertions. |
+| `supabase/config.toml` | `supabase init` output for a future local stack. |
 
 Files must run in order — 002 references tables from 001, 003 references
-helpers from 002 (`private.is_group_leader`).
+helpers from 002.
 
-## What is intentionally NOT wired yet
+### App integration (this branch)
 
-- **The app is untouched.** No Supabase packages installed, no client, no env
-  vars, no runtime behavior change. Iron still runs entirely on local/mock
-  state + AsyncStorage.
-- **No Supabase project exists.** These files have not been executed anywhere;
-  they are for review.
-- **No API.Bible** — the schema stores passage references (book/chapter/verse
-  range), never verse text.
-- **No push notification delivery** — only the `notification_preferences`
-  table; no tokens, no scheduler (contract §9).
-- **No storage buckets, no analytics, no social mechanics** of any kind.
+| File | Contents |
+| --- | --- |
+| `src/lib/supabase.ts` | Client (AsyncStorage-backed session persistence); `null` when env vars are missing → the app runs in demo mode instead of crashing. |
+| `src/lib/db/*` | Data layer: `types` (hand-written row types), `profiles`, `groups` (RPCs), `schedules`, `reflections`, `responses`, `notifications`, `load` (assembles the whole app state from RLS-scoped selects). |
+| `src/lib/supabase-actions.ts` | `AppActions` against Supabase: optimistic dispatch through the existing reducer + matching server write; join/create/start-week are server-first with a full reload so state always carries server ids. |
+| `src/lib/store.tsx` | Mode-branched provider: demo hydration/persistence unchanged; Supabase mode follows the auth session, mirrors server data into the same `AppState`, and persists only device prefs (language, active group). |
+| `src/app/sign-in.tsx` | Email OTP screen (typed 6-digit code — no deep links, works in Expo Go). |
+| `.env.example` | Placeholder env vars; `.env` is gitignored. |
 
-## How to run/review the migrations later
+**Two modes, never mixed.** With `EXPO_PUBLIC_SUPABASE_URL` +
+`EXPO_PUBLIC_SUPABASE_ANON_KEY` set, the app is Supabase-backed end to end
+and demo seeds are never loaded. Without them it is exactly the pre-Supabase
+local demo app (separate AsyncStorage keys). The choice happens once, at
+module load.
 
-When a Supabase project is created (not part of this task):
+## Setup
 
-1. `supabase init` in the repo (creates `supabase/config.toml`).
-2. The Supabase CLI expects migration filenames as `<timestamp>_name.sql`
-   (e.g. `20260707000001_initial_schema.sql`). Rename the three files then —
-   the `001_`/`002_`/`003_` prefixes were chosen for review readability and
-   preserve the required ordering when renamed in the same order.
-3. Local check: `supabase start` + `supabase db reset` runs all migrations
-   against a local stack (this also provides `auth.users` and the
-   `anon`/`authenticated`/`service_role` roles the SQL references).
-4. Remote: `supabase link --project-ref <ref>` then `supabase db push`.
-5. Generate types for the app phase:
-   `supabase gen types typescript --local > src/lib/database.types.ts`
-   (path to be decided at wiring time; nothing imports it yet).
+1. Create a Supabase project (or run a local stack on a machine with Docker:
+   `npx supabase start`).
+2. Apply migrations: `npx supabase db push` (linked project) or
+   `npx supabase db reset` (local stack). Note the Supabase CLI expects
+   migration files named `<timestamp>_name.sql`; rename the `001_`/`002_`/
+   `003_` files preserving order when adopting the CLI flow.
+3. Auth: enable the **Email** provider. OTP-code sign-in works out of the box
+   (`signInWithOtp` + `verifyOtp` with typed codes); no redirect URL or deep
+   link setup is needed. For production, configure custom SMTP — the built-in
+   sender is rate-limited (~2 emails/hour), which also matters when testing
+   with real addresses. On a local stack, OTP emails land in Mailpit
+   (`http://127.0.0.1:54324`).
+4. `cp .env.example .env`, fill in the URL and anon key, restart Expo with
+   cache clear (`npx expo start -c` — env vars are inlined at bundle time).
 
-The SQL targets a Supabase environment: it references `auth.users`,
-`auth.uid()`, and the `anon`/`authenticated` roles. It will not run on a
-vanilla Postgres without shims — review it as Supabase SQL.
+## Validation status
 
-## Security assumptions (to re-verify at wiring time)
+- **PGlite validation: PASSING.** `npm install --no-save @electric-sql/pglite
+  && node supabase/validate-local.mjs` → migrations apply cleanly, 53/53
+  behavioral assertions pass (draft weeks invisible to members, hidden days
+  blocked at insert but old reflections survive, private reflections hidden
+  from leaders, snapshot mismatches rejected, code rotation, Amen dedupe,
+  column-grant immutability).
+- **`npx supabase db reset`: NOT yet run** — no Docker/container runtime on
+  this machine. Run it (or `db push` against a real project) before trusting
+  the migrations in production; PGlite is real Postgres but not the full
+  Supabase stack.
+- App checks passing: `npx tsc --noEmit`, `npm run lint`,
+  `npx expo-doctor` (18/18), `npx expo export --platform android`.
 
-- **`security definer` everywhere it matters.** All `private.*` helpers and
-  all 5 RPCs run as the migration role (table owner), which bypasses RLS.
-  Every RPC therefore does its own `auth.uid()` authorization check before
-  touching data, and every definer function pins `search_path = ''` with
-  schema-qualified references.
-- **Deny by default.** RLS is enabled on all 9 tables; any operation without a
-  policy (all deletes, all writes to `memberships`/`invite_codes`, inserts to
-  `groups`/`weekly_schedules`/`schedule_days`) is blocked for clients and only
-  reachable through RPCs or the service role.
-- **Column-level grants complement RLS.** RLS picks rows; revoked-then-
-  regranted column lists pick columns (e.g. leaders can edit a day's passage
-  and flags but not its `date`/`weekday`; reflection authors can edit
-  body/visibility/highlights but never the passage snapshot or date).
-- **anon has nothing.** All table privileges are revoked from `anon`; RPC
-  execute is granted to `authenticated` only. Iron has no anonymous surface.
-- **Profile creation is a client insert** (`profiles_insert_own`, id must
-  equal `auth.uid()`). Alternative: a trigger on `auth.users`. Decide at
-  wiring time; the policy is safe either way.
-- **The feed's "respond first" gate stays client-side** (contract §5). RLS
-  authorizes group members to read shared reflections; the soft gate is UX.
-- **Archived groups**: new Amens/reflections are blocked
-  (`private.can_respond_to_day` checks group status) and the join RPC refuses
-  archived groups, but leader edits to schedules of an archived group are not
-  yet blocked — acceptable for MVP since archiving has no UI; revisit with
-  open decision #3.
-- **`removed` members cannot rejoin by code** — the join RPC fails closed,
-  because removal semantics are an undecided product question (contract §10).
-  Nothing can set `status = 'removed'` yet, so this path is unreachable today.
-- **Timestamps are server-side.** `created_at`/`updated_at` are never
-  client-writable (insert column grants exclude them; `updated_at` comes from
-  triggers), so feed ordering cannot be spoofed.
-- **The client passes `week_start`** to `create_group_with_leader`/`start_week`
-  because "this week" is a device-timezone concept; the server validates it is
-  a Monday but does not guess it from `now()`.
+## What is intentionally NOT done
 
-## Next step after schema review
+- **No API.Bible** — verse text is still the local mock (`src/lib/bible.ts`);
+  the backend stores only passage references.
+- **No push notification delivery** — preferences persist to
+  `notification_preferences`; no tokens/scheduler. The reminder on/off switch
+  in the notification screen remains UI-only (the table has `enabled` ready).
+- **No social features, no analytics, no storage buckets.**
+- **No sign-out UI** — sessions persist until expiry; the provider already
+  handles `SIGNED_OUT` when one is added.
+- **No realtime** — data refreshes on auth, join/create/start-week, and
+  reflection posts. Other members' new activity appears on next reload/app
+  start. Deliberate MVP choice to keep the surface minimal.
 
-Per contract §8, in order:
+## Security assumptions (unchanged from the schema phase)
 
-1. Isaac reviews these three SQL files against the contract.
-2. Create the Supabase project, run the migrations (steps above), and try the
-   RPC flows by hand (SQL editor or `curl`) — especially: join with a bad
-   code, member reading a draft week, member inserting a reflection on a
-   hidden day (all must fail).
-3. Then begin app wiring as its own task, following contract §8: auth (email
-   OTP) + profile creation first, groups/memberships second. That task — not
-   this one — installs `@supabase/supabase-js` and adds the client.
+- RLS is the boundary; the anon key ships in the client by design.
+- All `private.*` helpers and RPCs are `security definer` with pinned
+  `search_path`; every RPC authorizes on `auth.uid()` itself.
+- Client mutations are optimistic: the reducer enforces the same product
+  rules first, RLS enforces them for real. A rejected write logs a warning
+  and converges on the next reload rather than crashing.
+- The feed's "respond before you read today's reflections" gate stays
+  client-side UX, per the contract.
+
+## Known MVP limitations / risks
+
+- **Stale-passage reflections**: if a leader edits a day's passage after a
+  member loaded the app, that member's reflection insert carries the old
+  snapshot and the DB trigger rejects it (warning logged; local copy stays
+  until restart). Self-heals on reload; a refetch-before-post can come later.
+- **Offline writes are fire-and-forget**: failed syncs warn and drop; there
+  is no outbox/retry queue.
+- **Leader edits on archived groups** are not blocked by policy yet
+  (archiving has no UI; revisit with contract open decision #3).
+- Hand-written row types in `src/lib/db/types.ts` — replace with
+  `supabase gen types typescript` once a project exists.
+
+## Manual QA checklist (Expo Go, two devices/accounts)
+
+1. Fresh install with env vars set → sign-in screen; email OTP code arrives;
+   typing it signs in; app lands on Welcome (no groups yet).
+2. Create group as leader (name typed here becomes the profile) → invite code
+   screen shows a real `IRON-XXXX` code → notification time → Home shows the
+   draft week.
+3. On device 2, sign in with a different email, join with the invite code →
+   member Home shows "not scheduled yet" while the week is a draft.
+4. Leader: Manage → set chapters via the Bible picker (book → chapter →
+   whole/range), auto-fill, write prayer point → Publish → member sees the
+   week after reopening the app.
+5. Toggle Saturday enabled: member sees a Saturday reading appear/disappear
+   (rest day) after reload.
+6. Hide today's reading (eye icon): member's Home/Feed show rest state;
+   direct `/reading` access is blocked; leader still sees it.
+7. Member Amens today → leader's Feed "responded" count includes them;
+   double-tap doesn't duplicate.
+8. Member posts a **shared** reflection → appears in leader's Feed (after
+   leader responds, per the soft gate). Member posts a **private** reflection
+   → never appears in anyone else's Feed; visible in own My Reflections.
+9. Hide the day after responses exist → existing shared reflection still
+   opens from the Feed.
+10. Switch between two groups (one led, one joined) → Manage tab appears only
+    for the led group.
+11. Change notification time → row appears/updates in
+    `notification_preferences` with the device's IANA timezone.
+12. Kill and reopen the app → still signed in, same active group, data
+    reloads from the server.
+13. Remove env vars, restart with `-c` → demo mode boots with seeded data
+    (no crash, no Supabase calls).
+
+## Next step after this branch
+
+1. Run `npx supabase db reset` on a Docker-capable machine (or `db push` to a
+   dev project) and walk the QA checklist above in Expo Go.
+2. Generate typed rows (`supabase gen types typescript`) and swap
+   `src/lib/db/types.ts`.
+3. Then, per contract §8: invite-code rotation UI, notification `enabled`
+   persistence in the UI, and (later phases) push delivery and API.Bible.

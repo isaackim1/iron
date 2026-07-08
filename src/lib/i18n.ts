@@ -16,6 +16,21 @@ const en: Dict = {
   'join.orCreate': 'or create a new group',
   'join.cta': 'Join group',
   'join.invalid': 'That code doesn’t match a group — try {code}',
+  'join.invalidGeneric': 'That code doesn’t match a group — check it with your leader',
+
+  'signin.title': 'Welcome to Iron',
+  'signin.subtitle': 'Sign in with your email — we’ll send you a 6-digit code.',
+  'signin.emailPlaceholder': 'your@email.com',
+  'signin.sendCode': 'Send code',
+  'signin.sending': 'Sending…',
+  'signin.codeTitle': 'Check your inbox',
+  'signin.codeSubtitle': 'Enter the 6-digit code we sent to {email}.',
+  'signin.codePlaceholder': '6-digit code',
+  'signin.verify': 'Sign in',
+  'signin.verifying': 'Signing in…',
+  'signin.resend': 'send a new code',
+  'signin.errorSend': 'Couldn’t send the code — check the email address and try again.',
+  'signin.errorVerify': 'That code didn’t work — check it or request a new one.',
 
   'create.title': 'Create a new group',
   'create.subtitle':
@@ -215,6 +230,21 @@ const ko: Dict = {
   'join.orCreate': '또는 새 그룹 만들기',
   'join.cta': '참여하기',
   'join.invalid': '코드가 맞지 않아요 — {code}를 입력해 보세요',
+  'join.invalidGeneric': '코드가 맞지 않아요 — 리더에게 확인해 보세요',
+
+  'signin.title': 'Iron에 오신 것을 환영해요',
+  'signin.subtitle': '이메일로 로그인하세요 — 6자리 코드를 보내드릴게요.',
+  'signin.emailPlaceholder': 'your@email.com',
+  'signin.sendCode': '코드 보내기',
+  'signin.sending': '보내는 중…',
+  'signin.codeTitle': '메일함을 확인하세요',
+  'signin.codeSubtitle': '{email}(으)로 보낸 6자리 코드를 입력하세요.',
+  'signin.codePlaceholder': '6자리 코드',
+  'signin.verify': '로그인',
+  'signin.verifying': '로그인 중…',
+  'signin.resend': '새 코드 받기',
+  'signin.errorSend': '코드를 보내지 못했어요 — 이메일 주소를 확인하고 다시 시도해 주세요.',
+  'signin.errorVerify': '코드가 맞지 않아요 — 다시 확인하거나 새 코드를 받아 보세요.',
 
   'create.title': '새 그룹 만들기',
   'create.subtitle':

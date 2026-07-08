@@ -4,6 +4,7 @@ import { TextInput, TouchableOpacity, View } from 'react-native';
 import { BackChevron, Pill, Screen, Txt } from '@/components/ui';
 import { DEMO_CODE } from '@/lib/mock';
 import { sel, useApp } from '@/lib/store';
+import { isSupabaseEnabled } from '@/lib/supabase';
 import { colors, fonts, radii } from '@/lib/theme';
 
 export default function Join() {
@@ -12,8 +13,8 @@ export default function Join() {
   const [name, setName] = useState(sel.me(state)?.name ?? '');
   const [error, setError] = useState(false);
 
-  const submit = () => {
-    if (actions.joinGroup(code, name)) {
+  const submit = async () => {
+    if (await actions.joinGroup(code, name)) {
       router.push('/notification-time');
     } else {
       setError(true);
@@ -65,7 +66,9 @@ export default function Join() {
       />
       {error && (
         <Txt variant="caption" center color={colors.danger} style={{ marginTop: 14 }}>
-          {t('join.invalid', { code: DEMO_CODE })}
+          {isSupabaseEnabled()
+            ? t('join.invalidGeneric')
+            : t('join.invalid', { code: DEMO_CODE })}
         </Txt>
       )}
       <View style={{ height: 40 }} />
