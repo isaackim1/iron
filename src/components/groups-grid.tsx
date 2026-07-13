@@ -41,6 +41,10 @@ export function GroupsGrid() {
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14 }}>
         {mine.map(({ group, membership, memberCount }) => {
           const active = group.id === state.activeGroupId;
+          const description =
+            state.language === 'ko' && group.descriptionKo
+              ? group.descriptionKo
+              : group.description;
           return (
             <Card
               key={group.id}
@@ -52,36 +56,44 @@ export function GroupsGrid() {
                 width: '47%',
                 minHeight: 220,
                 backgroundColor: active ? colors.yellow : colors.cardDark,
-                alignItems: 'center',
-                justifyContent: 'center',
               }}
             >
-              <Txt
-                variant="quoteBold"
-                center
-                size={20}
-                color={active ? colors.ink : colors.yellow}
-                style={{ lineHeight: 28 }}
-              >
-                {sel.groupName(state, group)}
-              </Txt>
-              <View style={{ height: 10 }} />
-              <Txt
-                variant="quote"
-                center
-                size={13}
-                color={active ? colors.charcoal : colors.onDark}
-              >
-                {state.language === 'ko' && group.descriptionKo
-                  ? group.descriptionKo
-                  : group.description}
-              </Txt>
-              <View style={{ height: 14 }} />
+              {/* Flexible centered content region; the meta line below it sits
+                  at the same bottom position on every card regardless of how
+                  many lines the name/description wrap to. */}
+              <View style={{ flex: 1, justifyContent: 'center' }}>
+                <Txt
+                  variant="quoteBold"
+                  center
+                  size={20}
+                  numberOfLines={3}
+                  color={active ? colors.ink : colors.yellow}
+                  style={{ lineHeight: 28 }}
+                >
+                  {sel.groupName(state, group)}
+                </Txt>
+                {!!description && (
+                  <>
+                    <View style={{ height: 10 }} />
+                    <Txt
+                      variant="quote"
+                      center
+                      size={13}
+                      numberOfLines={2}
+                      color={active ? colors.charcoal : colors.onDark}
+                    >
+                      {description}
+                    </Txt>
+                  </>
+                )}
+              </View>
               <Txt
                 variant="caption"
                 center
                 size={10}
+                numberOfLines={1}
                 color={active ? colors.charcoal : colors.mutedOnDark}
+                style={{ marginTop: 14 }}
               >
                 {membership.role === 'leader'
                   ? t('groups.leaderMeta', { n: memberCount })

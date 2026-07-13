@@ -154,6 +154,8 @@ export default function GroupDetail() {
             flexDirection: 'row',
             justifyContent: 'space-between',
             paddingVertical: 13,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.hairline,
           }}
         >
           <Txt variant="body" size={14}>
@@ -161,6 +163,21 @@ export default function GroupDetail() {
           </Txt>
           <Txt variant="button" size={14} color={colors.ink}>
             {state.language === 'en' ? 'English ›' : '한국어 ›'}
+          </Txt>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => router.push('/account')}
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            paddingVertical: 13,
+          }}
+        >
+          <Txt variant="body" size={14}>
+            {t('account.title')}
+          </Txt>
+          <Txt variant="button" size={14} color={colors.ink}>
+            ›
           </Txt>
         </TouchableOpacity>
       </Card>

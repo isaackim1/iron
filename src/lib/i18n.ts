@@ -149,6 +149,16 @@ const en: Dict = {
   'groups.leaderMeta': 'leader · {n} members',
   'groups.memberMeta': 'member · {n}',
 
+  'account.title': 'account',
+  'account.signedInAs': 'signed in as',
+  'account.signOut': 'Sign out',
+  'account.signingOut': 'Signing out…',
+  'account.confirmTitle': 'Sign out?',
+  'account.confirmBody': 'You can sign back in with your email anytime.',
+  'account.confirmBodyDemo': 'This resets the local demo data and returns to the welcome screen.',
+  'account.cancel': 'Cancel',
+  'account.error': 'Couldn’t sign out — check your connection and try again.',
+
   'gdetail.prayerLabel': 'community prayer card',
   'gdetail.more': 'More',
   'gdetail.announcements': 'announcements',
@@ -361,6 +371,16 @@ const ko: Dict = {
   'groups.title': '나의 그룹',
   'groups.leaderMeta': '리더 · 멤버 {n}명',
   'groups.memberMeta': '멤버 · {n}명',
+
+  'account.title': '계정',
+  'account.signedInAs': '로그인 계정',
+  'account.signOut': '로그아웃',
+  'account.signingOut': '로그아웃 중…',
+  'account.confirmTitle': '로그아웃할까요?',
+  'account.confirmBody': '언제든 이메일로 다시 로그인할 수 있어요.',
+  'account.confirmBodyDemo': '데모 데이터가 초기화되고 시작 화면으로 돌아가요.',
+  'account.cancel': '취소',
+  'account.error': '로그아웃하지 못했어요 — 연결을 확인한 뒤 다시 시도해 주세요.',
 
   'gdetail.prayerLabel': '공동체 기도제목',
   'gdetail.more': '더보기',

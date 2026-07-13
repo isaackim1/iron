@@ -1,11 +1,28 @@
 import Feather from '@expo/vector-icons/Feather';
 import { Redirect, router } from 'expo-router';
-import { TextInput, TouchableOpacity, View } from 'react-native';
+import { Platform, TextInput, TouchableOpacity, View, type TextStyle } from 'react-native';
 import { Card, Pill, Screen, Txt } from '@/components/ui';
 import { passageLabel } from '@/lib/bible';
 import { dayName, fmtWeekRange, fromIso, mondayOf, today } from '@/lib/dates';
 import { sel, useApp } from '@/lib/store';
 import { colors, fonts } from '@/lib/theme';
+
+/**
+ * Android's EditText ships its own vertical padding and clips tight
+ * custom-font line boxes (Noto Sans KR ascenders on the first line). Zero the
+ * built-in padding, pad explicitly, and drop Android's extra font padding so
+ * Korean placeholder and entered text stay fully visible, aligned top-left.
+ */
+const fieldInputStyle: TextStyle = {
+  fontSize: 14,
+  lineHeight: 22,
+  color: colors.charcoal,
+  textAlignVertical: 'top',
+  paddingHorizontal: 0,
+  paddingTop: Platform.OS === 'android' ? 6 : 0,
+  paddingBottom: Platform.OS === 'android' ? 6 : 0,
+  ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
+};
 
 export default function Manage() {
   const { state, actions, t } = useApp();
@@ -193,14 +210,10 @@ export default function Manage() {
           onChangeText={actions.setPrayerPoint}
           placeholder={t('manage.prayerPlaceholder')}
           placeholderTextColor={colors.muted}
-          style={{
-            minHeight: 84,
-            fontSize: 14,
-            lineHeight: 21,
-            fontFamily: fonts.quote(state.language),
-            color: colors.charcoal,
-            textAlignVertical: 'top',
-          }}
+          style={[
+            fieldInputStyle,
+            { minHeight: 84, fontFamily: fonts.quote(state.language) },
+          ]}
         />
       </Card>
 
@@ -215,14 +228,10 @@ export default function Manage() {
           onChangeText={actions.setAnnouncement}
           placeholder={t('manage.announcementPlaceholder')}
           placeholderTextColor={colors.muted}
-          style={{
-            minHeight: 44,
-            fontSize: 14,
-            lineHeight: 21,
-            fontFamily: fonts.body(state.language),
-            color: colors.charcoal,
-            textAlignVertical: 'top',
-          }}
+          style={[
+            fieldInputStyle,
+            { minHeight: 64, fontFamily: fonts.body(state.language) },
+          ]}
         />
       </Card>
 
