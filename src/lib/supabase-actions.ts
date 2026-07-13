@@ -25,7 +25,16 @@ import {
 
 function sync(label: string, work: Promise<unknown>): void {
   work.catch((e: unknown) => {
-    const message = e instanceof Error ? e.message : String(e);
+    let message: string;
+    if (e instanceof Error) {
+      message = `${e.name}: ${e.message}`;
+    } else {
+      try {
+        message = JSON.stringify(e);
+      } catch {
+        message = String(e);
+      }
+    }
     console.warn(`[iron] ${label} failed: ${message}`);
   });
 }
