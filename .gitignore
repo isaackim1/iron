@@ -40,6 +40,9 @@ yarn-error.*
 .env
 .env*.local
 
+# hosted QA session tokens (qa/hosted/README.md)
+qa/.sessions/
+
 # typescript
 *.tsbuildinfo
 

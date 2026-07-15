@@ -55,18 +55,20 @@ module load.
 
 ## Validation status
 
-- **PGlite validation: PASSING.** `npm install --no-save @electric-sql/pglite
-  && node supabase/validate-local.mjs` → migrations apply cleanly, 53/53
-  behavioral assertions pass (draft weeks invisible to members, hidden days
-  blocked at insert but old reflections survive, private reflections hidden
-  from leaders, snapshot mismatches rejected, code rotation, Amen dedupe,
-  column-grant immutability).
-- **`npx supabase db reset`: NOT yet run** — no Docker/container runtime on
-  this machine. Run it (or `db push` against a real project) before trusting
-  the migrations in production; PGlite is real Postgres but not the full
-  Supabase stack.
-- App checks passing: `npx tsc --noEmit`, `npm run lint`,
-  `npx expo-doctor` (18/18), `npx expo export --platform android`.
+See `docs/qa-playbook.md` for the full release QA process.
+
+- **PGlite RLS regression suite: PASSING.** `npm run test:rls` → migrations
+  apply cleanly, ~140 behavioral assertions pass across sections S1–S14
+  (anon posture, cross-group isolation, schedule lifecycle, Amen/reflection
+  rules, membership lifecycle, archived groups, column-grant immutability
+  and more). `@electric-sql/pglite` is a devDependency; the suite runs after
+  a plain `npm install`.
+- **Hosted two-account E2E harness:** `qa/hosted/` drives the real Supabase
+  project with the anon key + two real OTP sessions (see its README).
+- Migrations `001`–`003` are applied to the hosted dev project;
+  `npx supabase migration list --linked` matches local history.
+- App checks passing: `npm run check` (typecheck + lint + RLS suite),
+  `npx madge --circular src` (none).
 
 ## What is intentionally NOT done
 
@@ -76,8 +78,8 @@ module load.
   `notification_preferences`; no tokens/scheduler. The reminder on/off switch
   in the notification screen remains UI-only (the table has `enabled` ready).
 - **No social features, no analytics, no storage buckets.**
-- **No sign-out UI** — sessions persist until expiry; the provider already
-  handles `SIGNED_OUT` when one is added.
+- ~~No sign-out UI~~ — implemented since: the Account screen signs out via
+  Supabase, resets in-memory state, and clears the persisted session.
 - **No realtime** — data refreshes on auth, join/create/start-week, and
   reflection posts. Other members' new activity appears on next reload/app
   start. Deliberate MVP choice to keep the surface minimal.

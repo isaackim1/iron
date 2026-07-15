@@ -12,7 +12,7 @@ import {
   type Action,
   type AppActions,
   type AppState,
-} from './store';
+} from './app-state';
 
 /**
  * AppActions against Supabase. Strategy: reuse the existing reducer as an
