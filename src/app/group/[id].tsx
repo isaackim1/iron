@@ -10,8 +10,7 @@ export default function GroupDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const group = state.groups.find((g) => g.id === id);
   if (!group) {
-    router.back();
-    return null;
+    return <Redirect href="/(tabs)/home" />;
   }
   if (!sel.isMemberOfGroup(state, group.id)) return <Redirect href="/(tabs)/home" />;
 
