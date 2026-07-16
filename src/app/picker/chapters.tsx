@@ -14,8 +14,7 @@ export default function PickerChapters() {
   if (!canManage) return <Redirect href="/(tabs)/home" />;
 
   if (!bookEntry) {
-    router.back();
-    return null;
+    return <Redirect href="/(tabs)/manage" />;
   }
 
   const chapters = Array.from({ length: bookEntry.chapters }, (_, i) => i + 1);

@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { View } from 'react-native';
 import { BackChevron, Pill, Screen, Txt } from '@/components/ui';
 import { passageLabel, versesFor } from '@/lib/bible';
@@ -15,8 +15,7 @@ export default function ReflectionDetail() {
     : undefined;
 
   if (!reflection) {
-    router.back();
-    return null;
+    return <Redirect href="/(tabs)/reflect" />;
   }
 
   const mine = reflection.userId === state.currentUserId;

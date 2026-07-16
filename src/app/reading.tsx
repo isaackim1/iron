@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { useEffect } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { BackChevron, Pill, Screen, Txt } from '@/components/ui';
@@ -18,8 +18,7 @@ export default function Reading() {
   }, []);
 
   if (!todayDay) {
-    router.back();
-    return null;
+    return <Redirect href="/(tabs)/home" />;
   }
 
   const verses = versesFor(todayDay.passage);

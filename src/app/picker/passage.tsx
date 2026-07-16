@@ -29,8 +29,7 @@ export default function PickerPassage() {
   if (!canManage) return <Redirect href="/(tabs)/home" />;
 
   if (!bookEntry || !ch || !dayEntry) {
-    router.back();
-    return null;
+    return <Redirect href="/(tabs)/manage" />;
   }
 
   const dayShort = `${dayName(fromIso(dayEntry.date), state.language)} ${fromIso(dayEntry.date).getDate()}`;
