@@ -1,7 +1,38 @@
 import Feather from '@expo/vector-icons/Feather';
 import { Redirect, Tabs } from 'expo-router';
+import { View } from 'react-native';
 import { sel, useApp } from '@/lib/store';
 import { colors } from '@/lib/theme';
+
+// 24px line icons with a small Brand/Accent dot above the active tab
+// (Brand System 06: "Active = ink + yellow dot; idle = muted").
+function TabBarIcon({
+  name,
+  color,
+  focused,
+}: {
+  name: keyof typeof Feather.glyphMap;
+  color: string;
+  focused: boolean;
+}) {
+  return (
+    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+      <Feather name={name} size={24} color={color} />
+      {focused && (
+        <View
+          style={{
+            position: 'absolute',
+            top: -7,
+            width: 4,
+            height: 4,
+            borderRadius: 2,
+            backgroundColor: colors.yellow,
+          }}
+        />
+      )}
+    </View>
+  );
+}
 
 export default function TabsLayout() {
   const { state, t } = useApp();
@@ -29,7 +60,7 @@ export default function TabsLayout() {
           paddingTop: 8,
         },
         tabBarActiveTintColor: colors.ink,
-        tabBarInactiveTintColor: '#AEACA3',
+        tabBarInactiveTintColor: colors.muted,
         tabBarLabelStyle: { fontFamily: labelFamily, fontSize: 10, marginTop: 2 },
       }}
     >
@@ -37,21 +68,27 @@ export default function TabsLayout() {
         name="home"
         options={{
           title: t('tabs.home'),
-          tabBarIcon: ({ color }) => <Feather name="home" size={20} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name="home" color={color} focused={focused} />
+          ),
         }}
       />
       <Tabs.Screen
         name="feed"
         options={{
           title: t('tabs.feed'),
-          tabBarIcon: ({ color }) => <Feather name="align-left" size={20} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name="align-left" color={color} focused={focused} />
+          ),
         }}
       />
       <Tabs.Screen
         name="reflect"
         options={{
           title: t('tabs.reflect'),
-          tabBarIcon: ({ color }) => <Feather name="book-open" size={20} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name="book-open" color={color} focused={focused} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -59,7 +96,9 @@ export default function TabsLayout() {
         options={{
           href: isLeader ? null : '/(tabs)/group',
           title: t('tabs.group'),
-          tabBarIcon: ({ color }) => <Feather name="users" size={20} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name="users" color={color} focused={focused} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -67,7 +106,9 @@ export default function TabsLayout() {
         options={{
           href: isLeader ? '/(tabs)/manage' : null,
           title: t('tabs.manage'),
-          tabBarIcon: ({ color }) => <Feather name="sliders" size={20} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name="sliders" color={color} focused={focused} />
+          ),
         }}
       />
     </Tabs>

@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { TouchableOpacity, View } from 'react-native';
-import { Avatar, Card, Pill, Screen, Txt } from '@/components/ui';
+import { Avatar, Card, Num, Pill, Screen, Txt } from '@/components/ui';
 import { passageLabel } from '@/lib/bible';
 import { addDays, dayName, fromIso, isoDate, mondayOf, today } from '@/lib/dates';
 import { sel, useApp } from '@/lib/store';
@@ -29,13 +29,9 @@ function WeekStrip() {
             <Txt variant="caption" color={isToday ? colors.ink : colors.muted}>
               {dayName(d, state.language)}
             </Txt>
-            <Txt
-              variant={isToday ? 'title' : 'body'}
-              size={15}
-              color={isToday ? colors.ink : colors.muted}
-            >
+            <Num size={15} color={isToday ? colors.ink : colors.muted}>
               {d.getDate()}
-            </Txt>
+            </Num>
             <View
               style={{
                 width: 5,

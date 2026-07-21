@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import React, { type ReactNode } from 'react';
 import {
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,16 +15,28 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '@/lib/store';
 import { colors, fonts, radii, spacing } from '@/lib/theme';
 
-type Variant = 'title' | 'body' | 'quote' | 'quoteBold' | 'button' | 'caption' | 'label';
+// Text roles map 1:1 to the Brand System's bilingual type scale (04 · Typography).
+type Variant =
+  | 'title' // 03 Title Screen — 24 / one per screen
+  | 'titleSection' // 04 Title Section — 18 / sections inside a screen
+  | 'body' // 05 Body — 15
+  | 'quote' // 06 Quote Body — 15, Scripture italic (EN)
+  | 'quoteBold' // 02 Quote Display — 24, big quotes / chapter refs
+  | 'button' // 07 Button — 14
+  | 'label' // 09 Label — 13, card labels
+  | 'caption' // 10 Caption — 12, hints
+  | 'meta'; // 11 Metadata — 11, timestamps / dot-separated meta
 
 const VARIANT_DEFAULTS: Record<Variant, { size: number; color: string }> = {
   title: { size: 24, color: colors.ink },
+  titleSection: { size: 18, color: colors.ink },
   body: { size: 15, color: colors.charcoal },
   quote: { size: 15, color: colors.charcoal },
   quoteBold: { size: 24, color: colors.ink },
   button: { size: 14, color: colors.charcoal },
-  caption: { size: 12, color: colors.muted },
   label: { size: 13, color: colors.muted },
+  caption: { size: 12, color: colors.muted },
+  meta: { size: 11, color: colors.muted },
 };
 
 export function Txt({
@@ -45,7 +58,13 @@ export function Txt({
 }) {
   const { state } = useApp();
   const d = VARIANT_DEFAULTS[variant];
-  const familyKey = variant === 'caption' || variant === 'label' ? 'body' : variant;
+  // Label/caption/meta share the body face; section titles share the title face.
+  const familyKey =
+    variant === 'caption' || variant === 'label' || variant === 'meta'
+      ? 'body'
+      : variant === 'titleSection'
+        ? 'title'
+        : variant;
   return (
     <Text
       numberOfLines={numberOfLines}
@@ -62,6 +81,67 @@ export function Txt({
     >
       {children}
     </Text>
+  );
+}
+
+/**
+ * Numeric voice — Lato Bold with tabular figures, per Brand System 04 (rows 14
+ * & 15). Use for *standalone* numerals only: OTP codes, invite codes, times,
+ * week-strip dates. Numerals inside a running sentence stay in the sentence's
+ * font (no mid-line switch), so those keep using <Txt>. `track` is the tracking
+ * fraction of the font size (OTP ≈ 0.30, invite code ≈ 0.04).
+ */
+export function Num({
+  children,
+  size = 15,
+  color = colors.ink,
+  track = 0,
+  center,
+  style,
+}: {
+  children: ReactNode;
+  size?: number;
+  color?: string;
+  track?: number;
+  center?: boolean;
+  style?: StyleProp<TextStyle>;
+}) {
+  const { state } = useApp();
+  return (
+    <Text
+      style={[
+        {
+          fontFamily: fonts.numeric(state.language),
+          fontSize: size,
+          color,
+          letterSpacing: size * track,
+          lineHeight: size * 1.3,
+          fontVariant: ['tabular-nums'],
+          textAlign: center ? 'center' : undefined,
+        },
+        style,
+      ]}
+    >
+      {children}
+    </Text>
+  );
+}
+
+const LOGO_RATIO = 189 / 74; // symbol source aspect (assets/images/logo.png)
+
+/**
+ * The Iron symbol — the "blade-i" primary mark. One reusable lockup so onboarding,
+ * sign-in and verify all render the mark at a consistent size and clear space
+ * (Brand System 02: symbol only in-app; the IRON wordmark is a header/splash asset).
+ */
+export function Logo({ height = 96, style }: { height?: number; style?: StyleProp<ViewStyle> }) {
+  return (
+    <View style={[{ alignItems: 'center' }, style]}>
+      <Image
+        source={require('../../assets/images/logo.png')}
+        style={{ height, width: height / LOGO_RATIO, resizeMode: 'contain' }}
+      />
+    </View>
   );
 }
 
@@ -98,6 +178,16 @@ export function Screen({
   );
 }
 
+/**
+ * The one button shape. Four kinds map to the Brand System's component set:
+ *   yellow  — Primary CTA (Accent Soft fill)          · one per screen
+ *   dark    — Dark pill (Action Dark fill)            · Read / Close, inside cards
+ *   white   — Secondary CTA (Surface + Border/Subtle) · toggles beside a primary
+ *   danger  — Destructive (State/Error fill)          · always behind a confirm
+ *   onDark  — Accent pill sitting on a dark surface
+ * Geometry stays fixed (17/32 · small 9/22); pressed = 80% opacity,
+ * disabled = 45% — exactly as documented in 06 · Product Components.
+ */
 export function Pill({
   label,
   onPress,
@@ -108,29 +198,34 @@ export function Pill({
 }: {
   label: string;
   onPress?: () => void;
-  kind?: 'yellow' | 'dark' | 'white' | 'onDark';
+  kind?: 'yellow' | 'dark' | 'white' | 'onDark' | 'danger';
   small?: boolean;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   const bg =
-    kind === 'yellow'
+    kind === 'yellow' || kind === 'onDark'
       ? colors.yellowSoft
       : kind === 'dark'
         ? colors.charcoal
-        : kind === 'onDark'
-          ? colors.yellowSoft
+        : kind === 'danger'
+          ? colors.danger
           : colors.card;
-  const fg = kind === 'dark' ? colors.onDark : colors.charcoal;
+  const fg = kind === 'dark' || kind === 'danger' ? colors.onDark : colors.charcoal;
   return (
     <TouchableOpacity
       activeOpacity={0.8}
       onPress={onPress}
       disabled={disabled}
+      // Small pills read below 48dp; extend the tap area without altering the
+      // visual size so touch targets stay accessible.
+      hitSlop={small ? { top: 8, bottom: 8, left: 4, right: 4 } : undefined}
       style={[
         {
           backgroundColor: bg,
           borderRadius: radii.pill,
+          borderWidth: kind === 'white' ? StyleSheet.hairlineWidth * 2 : 0,
+          borderColor: colors.hairline,
           paddingVertical: small ? 9 : 17,
           paddingHorizontal: small ? 22 : 32,
           alignItems: 'center',
@@ -150,7 +245,9 @@ export function BackChevron({ onDark }: { onDark?: boolean }) {
   return (
     <TouchableOpacity
       onPress={() => router.back()}
-      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+      // Keep the glyph visually compact (so adjacent titles sit close) but
+      // extend the tap area past 44dp via hitSlop rather than layout width.
+      hitSlop={{ top: 16, bottom: 16, left: 18, right: 18 }}
       style={{ alignSelf: 'flex-start', paddingVertical: 4 }}
     >
       <Text

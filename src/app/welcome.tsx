@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
-import { Image, TouchableOpacity, View } from 'react-native';
-import { Pill, Screen, Txt } from '@/components/ui';
+import { TouchableOpacity, View } from 'react-native';
+import { Logo, Pill, Screen, Txt } from '@/components/ui';
 import { useApp } from '@/lib/store';
 import { colors, radii } from '@/lib/theme';
 
@@ -11,10 +11,7 @@ export default function Welcome() {
     <Screen scroll={false}>
       <View style={{ flex: 1, alignItems: 'center' }}>
         <View style={{ flex: 1.1 }} />
-        <Image
-          source={require('../../assets/images/logo.png')}
-          style={{ width: 74, height: 189, resizeMode: 'contain' }}
-        />
+        <Logo height={189} />
         <View style={{ flex: 0.6 }} />
         <Txt variant="quote" center size={17} style={{ maxWidth: 300 }}>
           {t('welcome.quote')}

@@ -2,7 +2,7 @@ import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
-import { Card, Pill, Screen, Txt } from '@/components/ui';
+import { Card, Num, Pill, Screen, Txt } from '@/components/ui';
 import { sel, useApp } from '@/lib/store';
 import { colors } from '@/lib/theme';
 
@@ -33,14 +33,10 @@ export default function InviteCode() {
           {t('invite.codeLabel')}
         </Txt>
         <View style={{ height: 10 }} />
-        <Txt
-          variant="title"
-          size={42}
-          color="#FFFFFF"
-          style={{ letterSpacing: 1, fontFamily: 'IstokWeb_700Bold' }}
-        >
+        {/* 14 · Code Display — Lato numeric, tabular, +4% tracking on dark card. */}
+        <Num size={42} color="#FFFFFF" track={0.04}>
           {group.inviteCode}
-        </Txt>
+        </Num>
         <View style={{ height: 14 }} />
         <Txt variant="quote" center size={13} color={colors.mutedOnDark} style={{ maxWidth: 260 }}>
           {t('invite.body')}

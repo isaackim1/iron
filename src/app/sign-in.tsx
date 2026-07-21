@@ -1,7 +1,7 @@
 import { Redirect, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { TextInput, TouchableOpacity, View } from 'react-native';
-import { Pill, Screen, Txt } from '@/components/ui';
+import { Logo, Pill, Screen, Txt } from '@/components/ui';
 import { useApp } from '@/lib/store';
 import { isSupabaseEnabled, supabase } from '@/lib/supabase';
 import { colors, fonts, radii } from '@/lib/theme';
@@ -70,7 +70,9 @@ export default function SignIn() {
 
   return (
     <Screen>
-      <View style={{ height: 72 }} />
+      <View style={{ height: 44 }} />
+      <Logo height={92} />
+      <View style={{ height: 28 }} />
       <Txt variant="title" center>
         {step === 'email' ? t('signin.title') : t('signin.codeTitle')}
       </Txt>
@@ -109,7 +111,16 @@ export default function SignIn() {
           keyboardType="number-pad"
           maxLength={6}
           autoComplete="one-time-code"
-          style={[inputStyle, { letterSpacing: 6 }]}
+          // 15 · OTP Entry — one field, Lato numeric, tabular, +30% tracking.
+          style={[
+            inputStyle,
+            {
+              fontFamily: fonts.numeric(state.language),
+              fontVariant: ['tabular-nums'],
+              fontSize: 22,
+              letterSpacing: 22 * 0.3,
+            },
+          ]}
         />
       )}
 

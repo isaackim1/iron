@@ -75,10 +75,11 @@ export default function ReflectionNew() {
         )}
 
         <View style={{ height: 16 }} />
+        {/* Multiline input — Surface/Input fill, R16 (Brand System 06 · Inputs). */}
         <View
           style={{
-            backgroundColor: colors.card,
-            borderRadius: radii.card,
+            backgroundColor: colors.input,
+            borderRadius: radii.cardSm,
             padding: 18,
             minHeight: 220,
           }}

@@ -17,12 +17,14 @@ function WheelColumn({
   onChange,
   width,
   render,
+  numeric,
 }: {
   values: number[];
   index: number;
   onChange: (i: number) => void;
   width: number;
   render: (v: number) => string;
+  numeric?: boolean;
 }) {
   const { state } = useApp();
   const ref = useRef<ScrollView>(null);
@@ -60,7 +62,10 @@ function WheelColumn({
             color={i === index ? colors.ink : colors.muted}
             style={{
               opacity: i === index ? 1 : 0.5,
-              fontFamily: fonts.title(state.language),
+              fontFamily: numeric
+                ? fonts.numeric(state.language)
+                : fonts.title(state.language),
+              fontVariant: numeric ? ['tabular-nums'] : undefined,
               lineHeight: 32,
             }}
           >
@@ -132,6 +137,7 @@ export default function NotificationTime() {
                 index={hourIdx}
                 onChange={setHourIdx}
                 width={80}
+                numeric
                 render={(v) => String(v)}
               />
               <WheelColumn
@@ -139,6 +145,7 @@ export default function NotificationTime() {
                 index={minIdx}
                 onChange={setMinIdx}
                 width={80}
+                numeric
                 render={(v) => String(v).padStart(2, '0')}
               />
               <WheelColumn
