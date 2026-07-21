@@ -111,7 +111,7 @@ export default function SignIn() {
           keyboardType="number-pad"
           maxLength={6}
           autoComplete="one-time-code"
-          // 15 · OTP Entry — one field, Lato numeric, tabular, +30% tracking.
+          // OTP entry — one field, Noto Sans numeric, tabular, +30% tracking.
           style={[
             inputStyle,
             {

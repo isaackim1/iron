@@ -85,17 +85,19 @@ export function Txt({
 }
 
 /**
- * Numeric voice — Lato Bold with tabular figures, per Brand System 04 (rows 14
- * & 15). Use for *standalone* numerals only: OTP codes, invite codes, times,
- * week-strip dates. Numerals inside a running sentence stay in the sentence's
- * font (no mid-line switch), so those keep using <Txt>. `track` is the tracking
- * fraction of the font size (OTP ≈ 0.30, invite code ≈ 0.04).
+ * Numeric voice — Noto Sans with tabular figures (confirmed brand decision).
+ * Use for *standalone* numerals only: OTP codes, invite codes, times,
+ * week-strip dates, standalone counts. Numerals inside a running/translated
+ * sentence stay in the sentence's font (no mid-line switch, no string parser),
+ * so those keep using <Txt>. `track` is the tracking fraction of the font size
+ * (OTP ≈ 0.30, invite code ≈ 0.04).
  */
 export function Num({
   children,
   size = 15,
   color = colors.ink,
   track = 0,
+  weight = 'bold',
   center,
   style,
 }: {
@@ -103,6 +105,7 @@ export function Num({
   size?: number;
   color?: string;
   track?: number;
+  weight?: 'regular' | 'bold';
   center?: boolean;
   style?: StyleProp<TextStyle>;
 }) {
@@ -111,7 +114,7 @@ export function Num({
     <Text
       style={[
         {
-          fontFamily: fonts.numeric(state.language),
+          fontFamily: fonts.numeric(state.language, weight),
           fontSize: size,
           color,
           letterSpacing: size * track,
@@ -130,17 +133,58 @@ export function Num({
 const LOGO_RATIO = 189 / 74; // symbol source aspect (assets/images/logo.png)
 
 /**
- * The Iron symbol — the "blade-i" primary mark. One reusable lockup so onboarding,
- * sign-in and verify all render the mark at a consistent size and clear space
- * (Brand System 02: symbol only in-app; the IRON wordmark is a header/splash asset).
+ * The Iron logo. `<Logo />` renders the "blade-i" symbol alone — its in-app use
+ * (onboarding, sign-in, verify), where the approved screens are symbol-only.
+ * `<Logo wordmark />` renders the full lockup: the symbol with the IRON wordmark
+ * in Lato Bold, uppercase, optically tracked (confirmed brand decision — for
+ * splash / headers / brand assets). Do not redesign the symbol.
  */
-export function Logo({ height = 96, style }: { height?: number; style?: StyleProp<ViewStyle> }) {
+export function Logo({
+  height = 96,
+  wordmark = false,
+  layout = 'stacked',
+  onDark = false,
+  style,
+}: {
+  height?: number;
+  wordmark?: boolean;
+  layout?: 'stacked' | 'horizontal';
+  onDark?: boolean;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const mark = (
+    <Image
+      source={require('../../assets/images/logo.png')}
+      style={{ height, width: height / LOGO_RATIO, resizeMode: 'contain' }}
+    />
+  );
+  if (!wordmark) {
+    return <View style={[{ alignItems: 'center' }, style]}>{mark}</View>;
+  }
+  const wmSize = height * (layout === 'horizontal' ? 0.46 : 0.3);
   return (
-    <View style={[{ alignItems: 'center' }, style]}>
-      <Image
-        source={require('../../assets/images/logo.png')}
-        style={{ height, width: height / LOGO_RATIO, resizeMode: 'contain' }}
-      />
+    <View
+      style={[
+        {
+          alignItems: 'center',
+          flexDirection: layout === 'horizontal' ? 'row' : 'column',
+          gap: height * (layout === 'horizontal' ? 0.32 : 0.22),
+        },
+        style,
+      ]}
+    >
+      {mark}
+      <Text
+        style={{
+          fontFamily: 'Lato_700Bold',
+          textTransform: 'uppercase',
+          color: onDark ? colors.onDark : colors.ink,
+          fontSize: wmSize,
+          letterSpacing: wmSize * 0.14, // optical tracking for the uppercase wordmark
+        }}
+      >
+        IRON
+      </Text>
     </View>
   );
 }

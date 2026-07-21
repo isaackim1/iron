@@ -33,7 +33,7 @@ export default function InviteCode() {
           {t('invite.codeLabel')}
         </Txt>
         <View style={{ height: 10 }} />
-        {/* 14 · Code Display — Lato numeric, tabular, +4% tracking on dark card. */}
+        {/* Invite code — Noto Sans numeric, tabular, +4% tracking on dark card. */}
         <Num size={42} color="#FFFFFF" track={0.04}>
           {group.inviteCode}
         </Num>

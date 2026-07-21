@@ -39,14 +39,17 @@ export const sizes = {
 
 export type Lang = 'en' | 'ko';
 
-// Three bilingual voices, per Iron — Final Brand System (04 · Typography):
-//   • English voice     → Istok Web (titles, body, Scripture italic)
-//   • Korean voice       → Noto Sans KR (everything Korean, always upright —
-//                          Korean is never italicized or mechanically skewed)
-//   • Numeric/CTA voice   → Lato (English button labels + every *standalone*
-//                          numeral the product shows — codes, OTP, times — in
-//                          both languages). Numerals inside a running text line
-//                          inherit that line's font (no mid-line switch).
+// Bilingual type system. Authority order: confirmed user decisions > Iron — Final.
+//   • English voice → Istok Web (titles, body, Scripture italic)
+//   • Korean voice  → Noto Sans KR (everything Korean, always upright — never
+//                     italicized or mechanically skewed)
+//   • Numeric voice → Noto Sans (confirmed decision): every *standalone*
+//                     numeral — OTP, times, dates, counts, week-strip — in both
+//                     languages, tabular where alignment matters. Numerals
+//                     embedded in a translated sentence stay in that sentence's
+//                     font (no mid-line switch, no global string parser).
+//   • Buttons       → Lato Bold (EN) / Noto Sans KR Bold (KO) — unchanged.
+//   • Wordmark      → Lato Bold, uppercase (confirmed decision; see <Logo>).
 // Korean has no italic member on purpose; the Scripture italic maps to an
 // upright Korean equivalent (weight / quotation marks), not fake-oblique.
 export const fonts = {
@@ -57,6 +60,7 @@ export const fonts = {
   quoteBold: (l: Lang) =>
     l === 'ko' ? 'NotoSansKR_700Bold' : 'IstokWeb_700Bold_Italic',
   button: (l: Lang) => (l === 'ko' ? 'NotoSansKR_700Bold' : 'Lato_700Bold'),
-  // Language-neutral numeric voice — one look for codes/OTP/times across EN + KO.
-  numeric: (_l: Lang) => 'Lato_700Bold',
+  // Language-neutral numeric voice — Noto Sans (Latin digits) across EN + KO.
+  numeric: (_l: Lang, weight: 'regular' | 'bold' = 'bold') =>
+    weight === 'bold' ? 'NotoSans_700Bold' : 'NotoSans_400Regular',
 };

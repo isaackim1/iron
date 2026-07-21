@@ -6,6 +6,10 @@ import {
 } from '@expo-google-fonts/istok-web';
 import { Lato_700Bold } from '@expo-google-fonts/lato';
 import {
+  NotoSans_400Regular,
+  NotoSans_700Bold,
+} from '@expo-google-fonts/noto-sans';
+import {
   NotoSansKR_400Regular,
   NotoSansKR_700Bold,
 } from '@expo-google-fonts/noto-sans-kr';
@@ -35,6 +39,8 @@ export default function RootLayout() {
     IstokWeb_700Bold,
     IstokWeb_700Bold_Italic,
     Lato_700Bold,
+    NotoSans_400Regular, // numeric voice (Latin digits)
+    NotoSans_700Bold,
     NotoSansKR_400Regular,
     NotoSansKR_700Bold,
   });
